@@ -1,0 +1,45 @@
+# Real configuration and credentials
+answers.conf
+.env
+.env.*
+!.env.example
+!*.example
+
+# Private and runtime directories
+/certs/
+/private/
+/backups/
+/logs/
+/data/
+/out/
+/public/
+**/profile-spk/
+**/chrome-profile/
+
+# Dependencies and caches
+node_modules/
+__pycache__/
+*.pyc
+
+# Certificates and private keys
+*.pem
+*.key
+*.p12
+*.pfx
+acme.json
+
+# Databases, recordings and archives
+*.sql
+*.dump
+*.mp4
+*.mp3
+*.webm
+*.wav
+*.tar
+*.tar.gz
+*.zip
+
+# Logs and temporary backups
+*.log
+*.before-*
+*.bak
