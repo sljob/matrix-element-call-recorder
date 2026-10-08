@@ -1,0 +1,29 @@
+name: Bug report
+description: Report a problem with the installer or runtime stack
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the issue and expected behavior
+    validations:
+      required: true
+  - type: input
+    id: domain
+    attributes:
+      label: DOMAIN
+      placeholder: example.org
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / commands output
+      render: shell
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      value: |
+        OS: Ubuntu 22.04+
+        Docker: version
+        Installer: v0.1

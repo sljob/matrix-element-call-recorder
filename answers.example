@@ -1,0 +1,48 @@
+# Example answers.conf (do NOT commit real secrets)
+# Copy to /root/answers.conf and fill values.
+
+# Domain and host
+DOMAIN=matrix.example.org
+HOSTNAME=matrix
+SERVER_IP=203.0.113.10
+SYNAPSE_SERVER_NAME=matrix.example.org
+
+# Admin and recorder
+ADMIN_USER=admin
+ADMIN_PASSWORD=CHANGE_ME_STRONG
+RECORDER_USER=recorder
+RECORDER_PASSWORD=CHANGE_ME_STRONG
+
+# Database
+POSTGRES_USER=synapse
+POSTGRES_PASSWORD=CHANGE_ME_STRONG
+POSTGRES_DB=synapse
+
+# LiveKit
+LIVEKIT_KEY=lk_dev_key
+LIVEKIT_SECRET=lk_dev_secret
+
+# Images (pin your preferred versions)
+ELEMENT_WEB_IMAGE=vectorim/element-web:latest
+ELEMENT_CALL_IMAGE=ghcr.io/element-hq/element-call:latest
+SYNAPSE_IMAGE=matrixdotorg/synapse:latest
+POSTGRES_IMAGE=postgres:16
+LIVEKIT_IMAGE=livekit/livekit-server:latest
+TRAEFIK_IMAGE=traefik:2.10
+JWT_IMAGE=python:3.12-slim
+ADMIN_IMAGE=awesometech/synapse-admin:latest
+NGINX_IMAGE=nginx:1.25-alpine
+
+# TLS and CA (local files, installer will copy into INSTALL_DIR/certs)
+TLS_CERT_FILE=/root/certs/fullchain.pem
+TLS_KEY_FILE=/root/certs/privkey.pem
+CA_CERT_FILE=/root/certs/ca.crt
+
+# Optional
+INSTALL_DIR=/opt/element-stack
+RECORDER_API_PORT=8788
+SOCAT_PORT=8090
+RECORDINGS_WEB_PORT=8899
+SYNAPSE_LOCAL_PORT=18008
+LIVEKIT_LOCAL_PORT=17880
+RECORDING_MIN_POWER_LEVEL=50

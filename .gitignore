@@ -2,10 +2,9 @@
 answers.conf
 .env
 .env.*
-!.env.example
 !*.example
 
-# Private and runtime directories
+# Private/runtime directories
 /certs/
 /private/
 /backups/
@@ -15,31 +14,26 @@ answers.conf
 /public/
 **/profile-spk/
 **/chrome-profile/
-
-# Dependencies and caches
+**/__pycache__/
 node_modules/
-__pycache__/
 *.pyc
 
-# Certificates and private keys
+# Certificates/keys
 *.pem
 *.key
 *.p12
 *.pfx
-acme.json
 
-# Databases, recordings and archives
-*.sql
-*.dump
-*.mp4
-*.mp3
-*.webm
-*.wav
-*.tar
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Build artifacts
+dist/
+build/
 *.tar.gz
 *.zip
-
-# Logs and temporary backups
-*.log
-*.before-*
-*.bak
