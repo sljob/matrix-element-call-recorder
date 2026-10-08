@@ -1,42 +1,44 @@
-# Example answers.conf (do NOT commit real secrets)
-# Copy to /root/answers.conf and fill values.
+# answers.example — anonymized answers.conf template
+# Copy to /root/answers.conf and fill in values.
 
-# Domain and host
-DOMAIN=matrix.example.org
+# Core
+DOMAIN=example.org
 HOSTNAME=matrix
-SERVER_IP=203.0.113.10
-SYNAPSE_SERVER_NAME=matrix.example.org
+SERVER_IP=192.0.2.10
+SYNAPSE_SERVER_NAME=example.org
 
-# Admin and recorder
+# Admins
 ADMIN_USER=admin
-ADMIN_PASSWORD=CHANGE_ME_STRONG
+ADMIN_PASSWORD=change-me-strong
+
+# Recorder bot
 RECORDER_USER=recorder
-RECORDER_PASSWORD=CHANGE_ME_STRONG
+RECORDER_PASSWORD=change-me-strong
 
 # Database
 POSTGRES_USER=synapse
-POSTGRES_PASSWORD=CHANGE_ME_STRONG
+POSTGRES_PASSWORD=change-me-strong
 POSTGRES_DB=synapse
 
 # LiveKit
-LIVEKIT_KEY=lk_dev_key
-LIVEKIT_SECRET=lk_dev_secret
+LIVEKIT_KEY=lk_key
+LIVEKIT_SECRET=lk_secret
 
-# Images (pin your preferred versions)
-ELEMENT_WEB_IMAGE=vectorim/element-web:latest
-ELEMENT_CALL_IMAGE=ghcr.io/element-hq/element-call:latest
-SYNAPSE_IMAGE=matrixdotorg/synapse:latest
-POSTGRES_IMAGE=postgres:16
-LIVEKIT_IMAGE=livekit/livekit-server:latest
-TRAEFIK_IMAGE=traefik:2.10
-JWT_IMAGE=python:3.12-slim
-ADMIN_IMAGE=awesometech/synapse-admin:latest
-NGINX_IMAGE=nginx:1.25-alpine
-
-# TLS and CA (local files, installer will copy into INSTALL_DIR/certs)
+# TLS (local CA)
 TLS_CERT_FILE=/root/certs/fullchain.pem
 TLS_KEY_FILE=/root/certs/privkey.pem
 CA_CERT_FILE=/root/certs/ca.crt
+
+# Images (pin your versions)
+ELEMENT_WEB_IMAGE=vectorim/element-web:latest
+ELEMENT_CALL_IMAGE=ghcr.io/element-hq/element-call:latest
+SYNAPSE_IMAGE=matrixdotorg/synapse:latest
+POSTGRES_IMAGE=postgres:15
+LIVEKIT_IMAGE=livekit/livekit-server:latest
+TRAEFIK_IMAGE=traefik:2.11
+JWT_IMAGE=ghcr.io/matrix-org/lk-jwt:latest
+ADMIN_IMAGE=ghcr.io/etkecc/synapse-admin:latest
+NGINX_IMAGE=nginx:alpine
 
 # Optional
 INSTALL_DIR=/opt/element-stack
@@ -46,3 +48,6 @@ RECORDINGS_WEB_PORT=8899
 SYNAPSE_LOCAL_PORT=18008
 LIVEKIT_LOCAL_PORT=17880
 RECORDING_MIN_POWER_LEVEL=50
+
+# Parallel recordings pool size (workers; one room per worker)
+RECORDING_WORKERS=4

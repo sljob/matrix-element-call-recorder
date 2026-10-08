@@ -1,13 +1,14 @@
 # Contributing
 
-Thanks for considering a contribution!
+Thanks for your interest!
 
-- Use issues for bugs and feature requests.
-- Keep secrets out of commits (no `answers.conf`, keys or certs).
-- Prefer small, focused PRs.
-- For changes to the installer, include:
-  - What changed and why
-  - How to test (exact commands)
-  - Rollback/compatibility notes
-- Follow the code style of touched files.
-- Security-sensitive changes: describe threat model and mitigations.
+- For bugs, use the Bug report template and attach:
+  - install.sh version (`head -n1 install.sh` if present)
+  - OS: `lsb_release -a` or `/etc/os-release`
+  - Docker & Compose versions
+  - Relevant logs (controller, recorder, traefik, synapse)
+- For features, describe the user story and expected UX.
+- Code style: shellcheck for bash, black for Python, prettier for JS.
+- Sign your commits if possible (GPG or SSH).
+
+License: Apache-2.0.

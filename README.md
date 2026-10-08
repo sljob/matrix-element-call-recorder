@@ -1,115 +1,147 @@
-# Matrix Element Call Recorder (Installer)
+# Matrix Element Call Recorder — One‑shot Installer
 
-A single-command installer that deploys a complete Matrix + Element Call recording stack with per-room ACL and a recording button injected into Element Web.
+Status: v0.1+ (updated 2026-10-08) • Ubuntu 22.04/24.04 • Docker/Compose
 
-Important: this project disables the built‑in Jitsi module and uses Element Call only. The recording button works in Element Web; participants may join from Element Desktop or Element X (Android/iOS). Known issue on Element X Android: sometimes a “dark tile” is recorded instead of video (tracked at https://github.com/element-hq/element-call/issues/3937).
+This repository ships a single installer that provisions a complete Matrix + Element stack with an end‑to‑end encrypted headless recorder and an ACL‑protected recordings portal.
 
-## What it installs (v0.1)
+What it installs
+- Traefik reverse proxy (TLS offload; 80/443/8448; TCP 5350 for TURN‑TLS)
+- Postgres + Synapse (homeserver)
+- Element Web and Element Call (Jitsi disabled)
+- LiveKit server (+ embedded TURN)
+- Recording workers: Chromium + Puppeteer + FFmpeg (host network) — one active room per worker
+- Recording controller (Flask) and publication pipeline (MP4/mp3/poster, index)
+- Recordings portal (Flask+gunicorn) with Matrix ACL:
+  - Server admins see all rooms
+  - Room admins (PL ≥ 50) see only their rooms
 
-- Traefik reverse proxy (80/443/8448, TCP 5350 for TURN‑TLS)
-- PostgreSQL (Synapse database)
-- Synapse homeserver
-- Element Web (+ injected `record-button.js`)
-- Element Call
-- LiveKit server with built‑in TURN
-- JWT service for LiveKit
-- Recorder (Chromium + Puppeteer + FFmpeg; host network)
-- Recording controller (Flask API)
-- Recordings portal (Flask + gunicorn) with Matrix‑based ACL
-- Well‑known static for Matrix discovery
-- systemd unit `element-stack.service`
+Recording UX
+- A small Record button is injected into Element Web (not Element Desktop/X). Clicking it calls the controller API with the user’s Matrix token.
+- Recordings are published to /recordings and grouped by room. Room admins only see their own rooms; server admins see all.
 
-## Access control
+Parallel recordings
+- Each recorder worker can handle one room at a time.
+- Use RECORDING_WORKERS to set the pool size (e.g. 4) for parallel recordings across different rooms.
+- Tested pool sizes: 1–4. Ensure sufficient CPU/GPU headroom (≈1 vCPU per 720p@15fps job + 512–768 MB RAM).
 
-- Only room admins (power level ≥ 50, configurable via `RECORDING_MIN_POWER_LEVEL`) can start/stop recordings via the Element Web button.
-- Room admins see only their rooms’ recordings in the portal.
-- Server admins see all recordings.
+Known limitations
+- Element X on Android may render a “dark tile” during live TX; see Element Call known issue (Android hardware decoders). Recording from Element Web is supported and recommended.
+- answers.conf is immutable after the first successful run (fingerprint file). Update by reinstall only.
 
-## Requirements and constraints
+Security & TLS
+- Uses local certificates issued by a local CA. Chromium/NSS inside the recorder trusts your CA.
+- DER/PEM mixed chains are handled correctly in this version.
 
-- OS: Ubuntu (ID=ubuntu), root
-- Clean Docker: no existing containers at install time
-- Free TCP ports: 80, 443, 8448, 5350 (and local ports described below)
-- Certificates are local files signed by your local CA; the CA is imported into the recorder’s Chromium NSS store.
-- Parallel recordings are NOT supported in v0.1 (single active job).
+Key improvements in this version
+- Fixed handling of mixed DER/PEM certificates.
+- Verifies SERVER_IP is actually bound on the host.
+- Uses the declared IP for LiveKit `rtc.node_ip`.
+- Protects against re‑running on top of an existing/prod installation.
+- Minimal host dependencies bootstrap.
+- Local Matrix user search by displayname enabled.
+- LiveKit discovery check.
+- Validates that media IPs match the server local address.
+- Checks for all recorders, PulseAudio and Element Call readiness.
+- Extra utility scripts:
+  - Name search check script (displayname search diagnostic).
+  - Read‑only full post‑install verification script.
 
-## Default local ports
+Quick start
+1) Copy `install.sh` and create `/root/answers.conf` from `answers.example`.
+2) Place your local CA and leaf cert/key:
+   - `TLS_CERT_FILE=/root/certs/fullchain.pem`
+   - `TLS_KEY_FILE=/root/certs/privkey.pem`
+   - `CA_CERT_FILE=/root/certs/ca.crt`
+3) Dry‑run checks (no changes):
+   ```bash
+   bash install.sh --check /root/answers.conf
+   ```
+4) Install:
+   ```bash
+   bash install.sh --install /root/answers.conf
+   systemctl enable --now element-stack.service
+   ```
 
-- Recorder API: 127.0.0.1:8788
-- Element Call (loopback): 127.0.0.1:8090
-- Recordings web: 127.0.0.1:8899
-- Synapse local: 127.0.0.1:18008
-- LiveKit local: 127.0.0.1:17880
-- LiveKit UDP: 7882, 3479, 30000–30020
-
-## Directory layout (INSTALL_DIR=/opt/element-stack)
-
-- certs/ {fullchain.pem, privkey.pem, ca.crt}
-- config/ {element.json, call.json, traefik.json, dynamic.yml, element-index.html, record-button.js}
-- data/{postgres,synapse,controller}/
-- data/profile/ — persistent Matrix crypto profile (do not delete)
-- out/ — draft recordings
-- public/ — published recordings and index
-- src/{recorder,controller,recordings-auth}/
-- well-known/.well-known/matrix/{client,server}
-- .installer-config-sha256 — answers.conf fingerprint
-
-## Health checks (via traefik using local CA)
-
-- curl --cacert certs/ca.crt --resolve DOMAIN:443:127.0.0.1 https://DOMAIN/_matrix/client/versions
-- curl --cacert certs/ca.crt --resolve DOMAIN:443:127.0.0.1 https://DOMAIN/recording/health
-- curl --cacert certs/ca.crt --resolve DOMAIN:443:127.0.0.1 https://DOMAIN/recordings/
-
-## Install
-
-1) Place files in /root:
-- `install.sh`
-- `answers.conf` (or start from `answers.example` and rename to `answers.conf`)
-- Local CA and TLS:
-  - TLS_CERT_FILE=/root/certs/fullchain.pem
-  - TLS_KEY_FILE=/root/certs/privkey.pem
-  - CA_CERT_FILE=/root/certs/ca.crt
-
-2) Run:
+Health checks (localhost with your CA)
 ```bash
-chmod +x install.sh
-sudo -E bash ./install.sh --install /root/answers.conf
+cd /opt/element-stack
+CACERT=certs/ca.crt
+for p in /_matrix/client/versions /.well-known/matrix/client /recording/health /recordings/; do
+  curl --silent --fail --cacert "$CACERT" --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN$p" >/dev/null && echo "OK $p" || echo "FAIL $p"
+done
 ```
 
-3) Start/stop/logs:
+Default routes behind Traefik
+- https://DOMAIN/ → Element Web
+- https://DOMAIN/_matrix, /_synapse → Synapse
+- https://DOMAIN/call/ → Element Call
+- https://DOMAIN/recording/* → Controller API
+- https://DOMAIN/recordings/ → Recordings portal
+- https://DOMAIN/.well-known/matrix/* → Well‑known
+
+answers.conf (excerpt)
+```ini
+# Required
+DOMAIN=example.org
+HOSTNAME=matrix
+SERVER_IP=192.0.2.10
+SYNAPSE_SERVER_NAME=example.org
+
+ADMIN_USER=admin
+ADMIN_PASSWORD=changeme
+RECORDER_USER=recorder
+RECORDER_PASSWORD=changeme
+
+POSTGRES_USER=synapse
+POSTGRES_PASSWORD=changeme
+POSTGRES_DB=synapse
+
+LIVEKIT_KEY=lk_key
+LIVEKIT_SECRET=lk_secret
+
+TLS_CERT_FILE=/root/certs/fullchain.pem
+TLS_KEY_FILE=/root/certs/privkey.pem
+CA_CERT_FILE=/root/certs/ca.crt
+
+# Images (pins)
+ELEMENT_WEB_IMAGE=vectorim/element-web:latest
+ELEMENT_CALL_IMAGE=ghcr.io/element-hq/element-call:latest
+SYNAPSE_IMAGE=matrixdotorg/synapse:latest
+POSTGRES_IMAGE=postgres:15
+LIVEKIT_IMAGE=livekit/livekit-server:latest
+TRAEFIK_IMAGE=traefik:2.11
+JWT_IMAGE=ghcr.io/matrix-org/lk-jwt:latest
+ADMIN_IMAGE=ghcr.io/etkecc/synapse-admin:latest
+NGINX_IMAGE=nginx:alpine
+
+# Optional
+INSTALL_DIR=/opt/element-stack
+RECORDER_API_PORT=8788
+SOCAT_PORT=8090
+RECORDINGS_WEB_PORT=8899
+SYNAPSE_LOCAL_PORT=18008
+LIVEKIT_LOCAL_PORT=17880
+RECORDING_MIN_POWER_LEVEL=50
+
+# NEW: parallel workers pool size
+RECORDING_WORKERS=4
+```
+
+Operate
 ```bash
-systemctl enable --now element-stack.service
 systemctl status element-stack.service
-systemctl stop element-stack.service
 docker compose -f /opt/element-stack/compose.json ps
-docker compose -f /opt/element-stack/compose.json logs --tail=100
+docker compose -f /opt/element-stack/compose.json logs --tail=200 recorder
+ls -lah /opt/element-stack/public
 ```
 
-## answers.conf (required keys)
+Troubleshooting
+- 403 on start: the user must have PL ≥ RECORDING_MIN_POWER_LEVEL in the room.
+- 401 to recorder API: check RECORDER_API_TOKEN wiring between controller/pool and workers.
+- “recorder is busy”: all workers are currently occupied; increase RECORDING_WORKERS or wait.
+- Synapse won’t start: check data/synapse ownership (uid/gid 991), presence of signing.key.
+- Element X/Android: known “dark tile”; use Element Web for recording.
 
-- DOMAIN, HOSTNAME, SERVER_IP, SYNAPSE_SERVER_NAME
-- ADMIN_USER, ADMIN_PASSWORD
-- RECORDER_USER, RECORDER_PASSWORD
-- POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
-- LIVEKIT_KEY, LIVEKIT_SECRET
-- ELEMENT_WEB_IMAGE, ELEMENT_CALL_IMAGE, SYNAPSE_IMAGE
-- POSTGRES_IMAGE, LIVEKIT_IMAGE, TRAEFIK_IMAGE
-- JWT_IMAGE, ADMIN_IMAGE, NGINX_IMAGE
-- TLS_CERT_FILE, TLS_KEY_FILE, CA_CERT_FILE
+License
+- Apache‑2.0 (recommended).
 
-Optional (defaults in parentheses):
-- INSTALL_DIR (/opt/element-stack)
-- RECORDER_API_PORT (8788), SOCAT_PORT (8090), RECORDINGS_WEB_PORT (8899)
-- SYNAPSE_LOCAL_PORT (18008), LIVEKIT_LOCAL_PORT (17880)
-- RECORDING_MIN_POWER_LEVEL (50)
-
-## Known limitations
-
-- Only one concurrent recording (v0.1).
-- Element X Android “dark tile” issue: https://github.com/element-hq/element-call/issues/3937
-
-## Security notes
-
-- Do not commit real `answers.conf` or private keys to Git.
-- `data/profile/` contains E2EE keys for recorder: never delete once in production.
-- The installer enforces `SYNAPSE_SERVER_NAME == DOMAIN` and uses the local CA.

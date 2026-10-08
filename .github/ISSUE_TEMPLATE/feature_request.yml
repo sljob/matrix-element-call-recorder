@@ -1,20 +1,17 @@
 name: Feature request
-description: Propose an improvement or new capability
+description: Suggest an idea or improvement
 labels: [enhancement]
 body:
   - type: textarea
-    id: proposal
+    id: problem
     attributes:
-      label: Proposal
-      description: What do you want to add or change?
-    validations:
-      required: true
+      label: Problem
+      description: What problem are you trying to solve?
   - type: textarea
-    id: rationale
+    id: solution
     attributes:
-      label: Rationale
-      description: Why is this useful?
+      label: Proposed solution
   - type: textarea
-    id: notes
+    id: context
     attributes:
-      label: Notes / alternatives
+      label: Additional context

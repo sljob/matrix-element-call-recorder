@@ -1,115 +1,118 @@
-# Matrix Element Call Recorder (Инсталлятор)
+# Matrix Element Call Recorder — Универсальный инсталлятор
 
-Установщик «в одну команду», который разворачивает полноценный стек записи звонков Element Call для Matrix с ACL по комнатам и кнопкой записи, внедряемой в Element Web.
+Статус: v0.1+ (обновлено 2026-10-08) • Ubuntu 22.04/24.04 • Docker/Compose
 
-Важно: встроенный Jitsi отключается, используется только Element Call. Кнопка записи работает в Element Web; участники могут подключаться из Element Desktop и Element X (Android/iOS). Известная проблема на Element X Android: вместо видео может получиться «тёмная плитка» (см. https://github.com/element-hq/element-call/issues/3937).
+Инсталлятор разворачивает полный стек Matrix + Element с E2EE‑рекордером и порталом записей с ACL.
 
-## Что разворачивается (v0.1)
+Что разворачивается
+- Traefik (80/443/8448; TCP 5350 для TURN‑TLS)
+- Postgres + Synapse
+- Element Web и Element Call (встроенный Jitsi отключён)
+- LiveKit (+ встроенный TURN)
+- Рекордеры: Chromium + Puppeteer + FFmpeg (host‑network), по одному активному залу на воркер
+- Контроллер (Flask) + публикация (MP4/mp3/постер, index.html)
+- Портал записей (Flask+gunicorn) с Matrix‑ACL:
+  - Серверные админы видят все записи
+  - Админы комнат (PL ≥ 50) — только свои комнаты
 
-- Traefik reverse proxy (80/443/8448, TCP 5350 для TURN‑TLS)
-- PostgreSQL (БД Synapse)
-- Synapse (homeserver)
-- Element Web (+ инъекция `record-button.js`)
-- Element Call
-- LiveKit с встроенным TURN
-- JWT‑сервис для LiveKit
-- Recorder (Chromium + Puppeteer + FFmpeg; host‑network)
-- Recording controller (Flask API)
-- Портал записей (Flask + gunicorn) с Matrix‑ACL
-- Статика /.well-known для Matrix
-- systemd unit `element-stack.service`
+Параллельные записи
+- Один воркер пишет одну комнату.
+- Параллельность настраивается переменной `RECORDING_WORKERS` (например, 4).
+- Тестировалось 1–4 воркера. Планируйте ресурсы: ≈1 vCPU и 512–768 МБ RAM на 720p@15fps.
 
-## Права доступа
+Ограничения
+- Кнопка записи работает только в Element Web (не Desktop/X).
+- Известная проблема Element X для Android: «тёмная плитка» при трансляции. Для записи используйте Element Web.
+- `answers.conf` неизменяем после первого успешного запуска (фиксируется отпечаток).
 
-- Запуск/останов записи — только админы комнаты (PL ≥ 50, настраивается `RECORDING_MIN_POWER_LEVEL`).
-- Админ комнаты видит в портале только свои комнаты.
-- Админ сервера видит все записи.
+Безопасность и TLS
+- Используются локальные сертификаты локального УЦ. В эту версию добавлена корректная обработка смешанных DER/PEM‑цепочек; CA импортируется в NSS (Chromium доверяет).
 
-## Требования и ограничения
+Новое в этой версии
+- Исправлена обработка смешанных DER/PEM‑сертификатов.
+- Проверяется, что `SERVER_IP` действительно назначен серверу.
+- Указанный IP используется в LiveKit `rtc.node_ip`.
+- Защита от повторного запуска поверх старой/production‑установки.
+- Минимальная установка зависимостей хоста.
+- Включён поиск локальных Matrix‑пользователей по displayname.
+- Проверка LiveKit discovery.
+- Проверка соответствия медиа‑IP локальному адресу сервера.
+- Проверка всех рекордеров, PulseAudio и Element Call.
+- Дополнительные скрипты:
+  - Проверка поиска по ФИО (displayname).
+  - Read‑only полный скрипт верификации установки.
 
-- OS: Ubuntu (ID=ubuntu), root
-- Чистый Docker: до установки не должно быть контейнеров
-- Свободные порты: 80, 443, 8448, 5350 (+ локальные)
-- Сертификаты — локальные, подписанные вашим локальным CA; CA импортируется в NSS Chromium рекордера.
-- Параллельные записи НЕ поддерживаются в v0.1 (одна активная запись).
+Быстрый старт
+1) Скопируйте `install.sh` и создайте `/root/answers.conf` из `answers.example`.
+2) Положите сертификаты:
+   - `TLS_CERT_FILE=/root/certs/fullchain.pem`
+   - `TLS_KEY_FILE=/root/certs/privkey.pem`
+   - `CA_CERT_FILE=/root/certs/ca.crt`
+3) Проверка без изменений:
+   ```bash
+   bash install.sh --check /root/answers.conf
+   ```
+4) Установка:
+   ```bash
+   bash install.sh --install /root/answers.conf
+   systemctl enable --now element-stack.service
+   ```
 
-## Порты по умолчанию
-
-- Recorder API: 127.0.0.1:8788
-- Element Call (локальная петля): 127.0.0.1:8090
-- Записи (веб): 127.0.0.1:8899
-- Synapse local: 127.0.0.1:18008
-- LiveKit local: 127.0.0.1:17880
-- LiveKit UDP: 7882, 3479, 30000–30020
-
-## Каталоги (INSTALL_DIR=/opt/element-stack)
-
-- certs/ {fullchain.pem, privkey.pem, ca.crt}
-- config/ {element.json, call.json, traefik.json, dynamic.yml, element-index.html, record-button.js}
-- data/{postgres,synapse,controller}/
-- data/profile/ — постоянный профиль Matrix/крипто (НЕ удалять)
-- out/ — черновики записей
-- public/ — опубликованные записи и index
-- src/{recorder,controller,recordings-auth}/
-- well-known/.well-known/matrix/{client,server}
-- .installer-config-sha256 — «отпечаток» answers.conf
-
-## Health‑проверки (через traefik и локальный CA)
-
-- curl --cacert certs/ca.crt --resolve DOMAIN:443:127.0.0.1 https://DOMAIN/_matrix/client/versions
-- curl --cacert certs/ca.crt --resolve DOMAIN:443:127.0.0.1 https://DOMAIN/recording/health
-- curl --cacert certs/ca.crt --resolve DOMAIN:443:127.0.0.1 https://DOMAIN/recordings/
-
-## Установка
-
-1) Положите в /root:
-- `install.sh`
-- `answers.conf` (или начните с `answers.example` и переименуйте в `answers.conf`)
-- Локальные сертификаты CA и TLS:
-  - TLS_CERT_FILE=/root/certs/fullchain.pem
-  - TLS_KEY_FILE=/root/certs/privkey.pem
-  - CA_CERT_FILE=/root/certs/ca.crt
-
-2) Запуск:
+Проверки (через traefik и локальный CA)
 ```bash
-chmod +x install.sh
-sudo -E bash ./install.sh --install /root/answers.conf
+cd /opt/element-stack
+CACERT=certs/ca.crt
+for p in /_matrix/client/versions /.well-known/matrix/client /recording/health /recordings/; do
+  curl --silent --fail --cacert "$CACERT" --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN$p" >/dev/null && echo "OK $p" || echo "FAIL $p"
+done
 ```
 
-3) Управление и логи:
+Основные маршруты
+- https://DOMAIN/ → Element Web
+- https://DOMAIN/_matrix, /_synapse → Synapse
+- https://DOMAIN/call/ → Element Call
+- https://DOMAIN/recording/* → Controller API
+- https://DOMAIN/recordings/ → Портал записей
+- https://DOMAIN/.well-known/matrix/* → Well‑known
+
+Фрагмент answers.conf
+```ini
+DOMAIN=example.org
+HOSTNAME=matrix
+SERVER_IP=192.0.2.10
+SYNAPSE_SERVER_NAME=example.org
+ADMIN_USER=admin
+ADMIN_PASSWORD=changeme
+RECORDER_USER=recorder
+RECORDER_PASSWORD=changeme
+POSTGRES_USER=synapse
+POSTGRES_PASSWORD=changeme
+POSTGRES_DB=synapse
+LIVEKIT_KEY=lk_key
+LIVEKIT_SECRET=lk_secret
+
+TLS_CERT_FILE=/root/certs/fullchain.pem
+TLS_KEY_FILE=/root/certs/privkey.pem
+CA_CERT_FILE=/root/certs/ca.crt
+
+# Размер пула параллельных записей
+RECORDING_WORKERS=4
+```
+
+Эксплуатация
 ```bash
-systemctl enable --now element-stack.service
 systemctl status element-stack.service
-systemctl stop element-stack.service
 docker compose -f /opt/element-stack/compose.json ps
-docker compose -f /opt/element-stack/compose.json logs --tail=100
+docker compose -f /opt/element-stack/compose.json logs --tail=200 recorder
+ls -lah /opt/element-stack/public
 ```
 
-## answers.conf (обязательные ключи)
+Типичные проблемы
+- 403 при старте: у пользователя нет PL ≥ RECORDING_MIN_POWER_LEVEL.
+- 401 к recorder API: проверьте связку `RECORDER_API_TOKEN` между пулом/контроллером и воркерами.
+- «recorder is busy»: все воркеры заняты — увеличьте `RECORDING_WORKERS` или дождитесь освобождения.
+- Synapse не стартует: права на data/synapse (uid/gid 991), наличие signing.key.
+- Element X/Android: «тёмная плитка» — записывайте через Element Web.
 
-- DOMAIN, HOSTNAME, SERVER_IP, SYNAPSE_SERVER_NAME
-- ADMIN_USER, ADMIN_PASSWORD
-- RECORDER_USER, RECORDER_PASSWORD
-- POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
-- LIVEKIT_KEY, LIVEKIT_SECRET
-- ELEMENT_WEB_IMAGE, ELEMENT_CALL_IMAGE, SYNAPSE_IMAGE
-- POSTGRES_IMAGE, LIVEKIT_IMAGE, TRAEFIK_IMAGE
-- JWT_IMAGE, ADMIN_IMAGE, NGINX_IMAGE
-- TLS_CERT_FILE, TLS_KEY_FILE, CA_CERT_FILE
-
-Опционально (по умолчанию):
-- INSTALL_DIR (/opt/element-stack)
-- RECORDER_API_PORT (8788), SOCAT_PORT (8090), RECORDINGS_WEB_PORT (8899)
-- SYNAPSE_LOCAL_PORT (18008), LIVEKIT_LOCAL_PORT (17880)
-- RECORDING_MIN_POWER_LEVEL (50)
-
-## Известные ограничения
-
-- Только одна параллельная запись (v0.1).
-- Проблема «тёмной плитки» в Element X Android: https://github.com/element-hq/element-call/issues/3937
-
-## Безопасность
-
-- Никогда не коммитьте реальный `answers.conf` и приватные ключи.
-- `data/profile/` содержит E2EE‑ключи рекордера — не удалять в проде.
-- Инсталлятор требует `SYNAPSE_SERVER_NAME == DOMAIN` и использует локальный CA.
+Лицензия
+- Apache‑2.0.

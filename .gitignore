@@ -1,4 +1,4 @@
-# Real configuration and credentials
+# Real configuration and credentials (keep local)
 answers.conf
 .env
 .env.*
@@ -12,13 +12,14 @@ answers.conf
 /data/
 /out/
 /public/
-**/profile-spk/
-**/chrome-profile/
-**/__pycache__/
-node_modules/
-*.pyc
+/profile-spk/
+/chrome-profile/
 
-# Certificates/keys
+# Dependencies and caches
+node_modules/
+__pycache__/
+
+# Certificates and private keys
 *.pem
 *.key
 *.p12
@@ -29,11 +30,3 @@ node_modules/
 Thumbs.db
 *.swp
 *.swo
-.idea/
-.vscode/
-
-# Build artifacts
-dist/
-build/
-*.tar.gz
-*.zip

@@ -14,6 +14,11 @@ body:
     attributes:
       label: DOMAIN
       placeholder: example.org
+  - type: input
+    id: workers
+    attributes:
+      label: RECORDING_WORKERS
+      placeholder: "e.g. 4"
   - type: textarea
     id: logs
     attributes:
@@ -25,5 +30,6 @@ body:
       label: Environment
       value: |
         OS: Ubuntu 22.04+
-        Docker: version
-        Installer: v0.1
+        Docker: <version>
+        Installer: v0.1+
+        CPUs/RAM: <e.g. 4C/8G>
