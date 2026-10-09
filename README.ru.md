@@ -115,4 +115,4 @@ ls -lah /opt/element-stack/public
 - Element X/Android: «тёмная плитка» — записывайте через Element Web.
 
 Лицензия
-- Apache‑2.0.
+- GNU Affero General Public License v3.0 (AGPL-3.0) — aligned with upstream Element licenses.
