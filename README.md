@@ -1,6 +1,6 @@
 # Matrix Element Call Recorder — One‑shot Installer
 
-Status: v0.1+ (updated 2026-10-08) • Ubuntu 22.04/24.04 • Docker/Compose
+Status: v0.1+ (updated 2026-10-09) • Ubuntu 26.04.1 LTS (Resolute) (Tested in Production) • Docker/Compose
 
 This repository ships a single installer that provisions a complete Matrix + Element stack with an end‑to‑end encrypted headless recorder and an ACL‑protected recordings portal.
 
