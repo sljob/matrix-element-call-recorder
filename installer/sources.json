@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "files": {
+    "config/record-button.js": "7790f0b6bef25a88195a711e02bbfeb56ccd77baa5926060eb39ea5db333e284",
+    "installer/compat/src/controller/app.py": "56f90bbcda8926c171cadfd94f307817f45ee47880bf31e37caf1357712d1683",
+    "installer/compat/src/recorder/entrypoint.sh": "01bf8c465ebd07f7eeb85c78bdb92a0a1fa1f19954d17fb36ebe91982c45a41c",
+    "installer/compat/src/recorder/p63-observer.js": "e35c5a67cbbf21f6cc323c4abfd3fef7f5b687c9aa4963b2c71ffd5f0dc7a18d",
+    "installer/compat/src/recorder/server.js": "7b9623a3bf2153ae22a2ec3b4b09f1fe54a8382f34de86eebe748ee51ac93316",
+    "installer/install.py": "6a6e61eaeb8160fdb63da4def0a8b6ea22291abab64d78064911f0365d67e2ad",
+    "installer/templates/button.js": "d7d2dca7b28cad2be57276ba798aec7c9eb7c69728c34346c0d225c7dd6c0dc9",
+    "installer/templates/controller-running.py": "4953c7761fc57afea8b5ebe2ef113d367a35ef3bb4fd8c8a16802a96c30a5c08",
+    "installer/templates/publisher-metadata.py": "cff4e12c938120acfdd1a5c7ec09dae69c87b8f77fa4b2bf3293203b289b0ac5",
+    "installer/templates/rec-publish.py": "a018c4f3e5be92d735d1287f445346fa0f935c2d233de395b7a3a441d816e8e3",
+    "installer/templates/recorder-observer.js": "678f11e02331c6932c35d75c63e4b325128c6121b956d341cfd277b2f1f4a926",
+    "installer/templates/recorder-package-lock.json": "fc78021d2468de4ee1ad4c90b8b3c6dff6cc9d2bec026087f79d0fb708bb46fb",
+    "installer/templates/recorder-package.json": "a31f0086d2b9a1c7a0ec83c4d62d05ac055bee9556195b4fe9a33a5e6dccc688",
+    "installer/templates/recorder-server.js": "94b8ed09c325df5ae7d69fd87e16717d8aea6b31ee109d81e524d02bc6f4802b",
+    "locales/en.json": "aebbcc900509c19d2fc051f2a5a809b5228f7899c9c9069b42aa93eb6204d0e3",
+    "src/controller/app.py": "00cc494f3faeed84c5d4d6264a68666d804f15d66727aa8beeadb21d63d57416",
+    "src/pool/Dockerfile": "14eaef51f4928da02478e189cb706de801d21f45f63e6a70fbef56f4cba863f7",
+    "src/pool/pool-router.py": "40c357f108dcdc72238afcb919f088fd22bfb0aaadf97a9d1d872e1f55ed66c5",
+    "src/recorder/entrypoint.sh": "cd41f40c07a9c75a388960a8731a8e5b61e1048e75ecfead998e80a515752d28",
+    "src/recorder/p63-observer.js": "345b940f1903a423353ab8c0b4d1e7a57d0d58e0b59bfb5ca686ffe85fb253cc",
+    "src/recorder/pool-loopback-supervisor.py": "0028204a626f6d97565b8ff2d211b5c341c865a14249ce974981b0373e8dce8c",
+    "src/recorder/server.js": "d232f297b3f55de45842502aca2d641b4258cf98c0c18023c18f240e748b68f5",
+    "src/recordings-auth/app.py": "db149a7f44fb524366dcf5e54d94f2bc79cd2f2e398b8c187de239ed539d37e4"
+  }
+}

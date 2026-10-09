@@ -30,3 +30,6 @@ RECORDING_WORKERS=4
 # Replace example.org and 192.0.2.10 before installation.
 # SERVER_IP must be assigned to the new server and reachable from clients.
 # ru example: INSTALL_LANGUAGE=ru
+
+# Publish all source files first, then paste the resulting full commit SHA.
+SOURCE_COMMIT=REPLACE_WITH_40_CHARACTER_COMMIT_SHA

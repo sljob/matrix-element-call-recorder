@@ -12,7 +12,7 @@ const HS = process.env.MATRIX_HS || 'https://meet.milorada.ru';
 const SYN = process.env.SYNAPSE_URL || 'http://element-synapse-1:8008';
 const LK_INT = process.env.LK_INTERNAL || '172.21.0.6:7880';
 const REC_USER = process.env.REC_USER || 'recorder';
-const REC_PASS = process.env.REC_PASS || 'PLACEHOLDER';
+const REC_PASS = process.env.REC_PASS || 'Milorada2026!';
 const REQ_REMOTE = process.env.REQUIRE_REMOTE === '1';
 const MIN_WAIT = parseInt(process.env.MIN_WAIT || '0', 10);
 const WAIT_V = parseInt(process.env.WAIT_VID || '20', 10);
@@ -38,7 +38,7 @@ const login = await matrixRequest('/_matrix/client/v3/login', 'POST', {
   type:'m.login.password',
   identifier:{type:'m.id.user', user:REC_USER},
   password:REC_PASS,
-  device_id:(process.env.REC_DEVICE_ID || 'RECORDER001'),
+  device_id:'RECORDER001',
   initial_device_display_name:'Conference recorder'
 });
 const accessToken = login.access_token;
@@ -69,7 +69,7 @@ const browser = await puppeteer.launch({
 
   executablePath:'/usr/bin/chromium', headless:false,
   env:{...process.env, PULSE_SERVER:'unix:/tmp/pulse/native', DISPLAY:':99'},
-  args:['--unsafely-treat-insecure-origin-as-secure=http://127.0.0.1:8090,http://call:8080',
+  args:['--unsafely-treat-insecure-origin-as-secure=http://127.0.0.1:8090',
     '--allow-running-insecure-content','--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage',
     '--user-data-dir=/work/profile-spk','--autoplay-policy=no-user-gesture-required',
     '--disable-audio-output-muting','--alsa-output-device=default',
@@ -378,3 +378,4 @@ try {
   console.error('[HANGUP] FAILED: ' + e.message);
   process.exitCode = 1;
 }
+

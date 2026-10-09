@@ -6,7 +6,7 @@ const BIND = process.env.BIND || '0.0.0.0';
 const OUT  = process.env.OUT_DIR || '/out';
 const SYN = process.env.SYNAPSE_URL || 'http://element-synapse-1:8008';
 const REC_USER = process.env.REC_USER || 'recorder';
-const REC_PASS = process.env.REC_PASS || 'PLACEHOLDER';
+const REC_PASS = process.env.REC_PASS || 'Milorada2026!';
 const jobs = new Map();
 const TRACE = `${OUT}/stop-trace.log`;
 const trace = (...a) => { const line = `[${new Date().toISOString()}] [SRV] ${a.join(' ')}\n`; try { fs.appendFileSync(TRACE, line); } catch {} process.stdout.write(line); };
@@ -29,7 +29,7 @@ async function matrixLogin() {
         type: 'm.login.password',
         identifier: {type: 'm.id.user', user: REC_USER},
         password: REC_PASS,
-        device_id: (process.env.REC_DEVICE_ID || 'RECORDER001')
+        device_id: 'RECORDER001'
       }),
       signal: AbortSignal.timeout(10000)
     });
@@ -107,7 +107,7 @@ if (url !== '/health' &&
   return json(res, 401, {error:'unauthorized'});
 if (room !== undefined &&
     (typeof room !== 'string' || !/^![^\s/]+$/.test(room)))
-  return json(res, 400, {error:'invalid Matrix room ID'}); if (url === '/start' && req.method === 'POST') { if (!room) return json(res, 400, {error:'room is required'}); if (jobs.size) return json(res, 409, {error:'recorder is busy'}); const file = `${OUT}/rec-${Date.now()}${process.env.WORKER_INDEX || "1"}.mp4`; 
+  return json(res, 400, {error:'invalid Matrix room ID'}); if (url === '/start' && req.method === 'POST') { if (!room) return json(res, 400, {error:'room is required'}); if (jobs.size) return json(res, 409, {error:'recorder is busy'}); const file = `${OUT}/rec-${Date.now()}.mp4`; 
 {
   const metaPath = file.replace(/\.mp4$/, '.meta');
   const temporary = metaPath + '.tmp';
@@ -127,14 +127,5 @@ if (room !== undefined &&
   }
 }
 
-fs.writeFileSync(file + '.active', ''); const proc = spawn('node', ['/app/p63-observer.js'], { env: {...process.env, DISPLAY: ':99', PULSE_SERVER: 'unix:/tmp/pulse/native', OUT_DIR: OUT, EC_URL: process.env.EC_URL || 'http://127.0.0.1:8090', MATRIX_HS: process.env.MATRIX_HS || 'https://meet.milorada.ru', LK_INTERNAL: process.env.LK_INTERNAL || '172.21.0.7:7880', ROOM_ID: room, OUT_FILE: file, RECORD_SECS: String(data.maxSeconds || process.env.RECORD_SECS || 7200), WAIT_VID: process.env.WAIT_VID || '30', REQUIRE_REMOTE: process.env.REQUIRE_REMOTE || '0', NO_AUDIO: process.env.NO_AUDIO || '0', PULSE_SRC: process.env.PULSE_SRC || 'recsink.monitor', MIN_WAIT: process.env.MIN_WAIT || '12'}, stdio: ['ignore','pipe','pipe'], detached: false }); const log = fs.createWriteStream(`${OUT}/job-${Date.now()}-${process.env.WORKER_INDEX || "1"}.log`); proc.stdout.on('data', d => { const m = String(d).match(/\[REC_FILE\]\s+(\S+)/); if (m && jobs.has(room)) jobs.get(room).file = m[1]; }); proc.stdout.pipe(log); proc.stderr.pipe(log); proc.on('exit', code => { trace(`observer exit=${code} room=${room}`); jobs.delete(room); try { fs.unlinkSync(file + '.active'); } catch {} log.end(); }); jobs.set(room, {proc, file, startedAt: Date.now()}); trace(`START room=${room} file=${file} pid=${proc.pid}`); return json(res, 200, {status:'started', room, file}); } if (url === '/stop' && req.method === 'POST') { const job = jobs.get(room); if (!job) return json(res, 404, {error:'no recording for this room'}); const elapsed = Math.round((Date.now()-job.startedAt)/1000); const dur = await stopJob(job, room); jobs.delete(room); return json(res, 200, {status:'stopped', room, elapsedSeconds: elapsed, file: job.file, durationSeconds: dur, closed: dur > 0}); } if (url === '/status') return json(res, 200, {room, recording: jobs.has(room)}); json(res, 404, {error:'not found'}); }); });
+fs.writeFileSync(file + '.active', ''); const proc = spawn('node', ['/app/p63-observer.js'], { env: {...process.env, DISPLAY: ':99', PULSE_SERVER: 'unix:/tmp/pulse/native', OUT_DIR: OUT, EC_URL: process.env.EC_URL || 'http://127.0.0.1:8090', MATRIX_HS: process.env.MATRIX_HS || 'https://meet.milorada.ru', LK_INTERNAL: process.env.LK_INTERNAL || '172.21.0.7:7880', ROOM_ID: room, OUT_FILE: file, RECORD_SECS: String(data.maxSeconds || process.env.RECORD_SECS || 7200), WAIT_VID: process.env.WAIT_VID || '30', REQUIRE_REMOTE: process.env.REQUIRE_REMOTE || '0', NO_AUDIO: process.env.NO_AUDIO || '0', PULSE_SRC: process.env.PULSE_SRC || 'recsink.monitor', MIN_WAIT: process.env.MIN_WAIT || '12'}, stdio: ['ignore','pipe','pipe'], detached: false }); const log = fs.createWriteStream(`${OUT}/job-${Date.now()}.log`); proc.stdout.on('data', d => { const m = String(d).match(/\[REC_FILE\]\s+(\S+)/); if (m && jobs.has(room)) jobs.get(room).file = m[1]; }); proc.stdout.pipe(log); proc.stderr.pipe(log); proc.on('exit', code => { trace(`observer exit=${code} room=${room}`); jobs.delete(room); try { fs.unlinkSync(file + '.active'); } catch {} log.end(); }); jobs.set(room, {proc, file, startedAt: Date.now()}); trace(`START room=${room} file=${file} pid=${proc.pid}`); return json(res, 200, {status:'started', room, file}); } if (url === '/stop' && req.method === 'POST') { const job = jobs.get(room); if (!job) return json(res, 404, {error:'no recording for this room'}); const elapsed = Math.round((Date.now()-job.startedAt)/1000); const dur = await stopJob(job, room); jobs.delete(room); return json(res, 200, {status:'stopped', room, elapsedSeconds: elapsed, file: job.file, durationSeconds: dur, closed: dur > 0}); } if (url === '/status') return json(res, 200, {room, recording: jobs.has(room)}); json(res, 404, {error:'not found'}); }); });
 server.listen(PORT, BIND, () => trace(`listening on ${BIND}:${PORT}`));
-
-let shuttingDown = false;
-async function shutdown() {
- if (shuttingDown) return; shuttingDown = true;
- server.close();
- for (const [room, job] of jobs) { try { await stopJob(job, room); } catch (e) { console.error('[STOP]',e.message); } }
- process.exit(0);
-}
-process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown);

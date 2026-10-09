@@ -68,7 +68,7 @@ def _reconcile(room, state):
     if entry and entry.get("status") == "active":
         rr = requests.get(RECORDER_URL + "/health",
             headers={"Authorization": "Bearer " + RECORDER_API_TOKEN},
-            timeout=15)
+            timeout=5)
         rr.raise_for_status()
         active = {j.get("room") for j in rr.json().get("active", [])}
         if room not in active:
@@ -115,9 +115,23 @@ def start_record():
     ts = int(time.time())
     lk_room = livekit_room_name(room)
     try:
+        encoded_room = requests.utils.quote(room, safe="")
+        caller_headers = {"Authorization": request.headers["Authorization"]}
+        member_url = (SYNAPSE_URL + "/_matrix/client/v3/rooms/" + encoded_room
+                      + "/state/m.room.member/"
+                      + requests.utils.quote(RECORDER_USER_ID, safe=""))
+        member = requests.get(member_url, headers=caller_headers, timeout=10)
+        membership = member.json().get("membership") if member.status_code == 200 else None
+        if membership not in ("join", "invite"):
+            invitation = requests.post(
+                SYNAPSE_URL + "/_matrix/client/v3/rooms/" + encoded_room + "/invite",
+                headers=caller_headers, json={"user_id": RECORDER_USER_ID}, timeout=10)
+            if invitation.status_code != 200:
+                return jsonify({"error": "cannot invite recorder",
+                                "detail": invitation.text}), 403
         rr = requests.post(f"{RECORDER_URL}/start", json={"room": room},
-            headers={"Authorization": "Bearer " + RECORDER_API_TOKEN, "X-Matrix-Authorization": request.headers.get("Authorization", "")}, timeout=90)
-        if rr.status_code != 200: return jsonify({"error": "recorder error", "detail": rr.text}), (rr.status_code if rr.status_code in (403,409,503) else 502)
+            headers={"Authorization": "Bearer " + RECORDER_API_TOKEN}, timeout=20)
+        if rr.status_code != 200: return jsonify({"error": "recorder error", "detail": rr.text}), 502
         egress_id = f"rec-{ts}"
         filename = os.path.basename((rr.json() or {}).get("file", f"{ts}.mp4"))
     except requests.RequestException as e:
@@ -139,7 +153,7 @@ def stop_record():
     if entry.get("status") != "active":
         return jsonify({"status": entry.get("status", "stopped"), "file": entry.get("file"), "note": "recording was already stopped"})
     try:
-        rr = requests.post(f"{RECORDER_URL}/stop", json={"room": room}, headers={"Authorization": "Bearer " + RECORDER_API_TOKEN}, timeout=110)
+        rr = requests.post(f"{RECORDER_URL}/stop", json={"room": room}, headers={"Authorization": "Bearer " + RECORDER_API_TOKEN}, timeout=60)
         status, text = rr.status_code, rr.text
     except requests.RequestException as e:
         status, text = 502, f"recorder unreachable: {type(e).__name__}: {e}"

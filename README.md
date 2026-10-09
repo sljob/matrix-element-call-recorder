@@ -1,147 +1,68 @@
-# Matrix Element Call Recorder — One‑shot Installer
+# Matrix Element Call + E2EE Recorder
 
-Status: v0.1+ (updated 2026-10-09) • Ubuntu 26.04.1 LTS (Resolute) (Tested in Production) • Docker/Compose
+[Русский README](README.ru.md)
 
-This repository ships a single installer that provisions a complete Matrix + Element stack with an end‑to‑end encrypted headless recorder and an ACL‑protected recordings portal.
+Browser-based conference recording using Chromium, Puppeteer and FFmpeg. This release replaces encoded installer payloads with readable files downloaded from **sljob/matrix-element-call-recorder**. The recorder participates in the call as a Matrix client with E2EE keys; it does not break encryption.
 
-What it installs
-- Traefik reverse proxy (TLS offload; 80/443/8448; TCP 5350 for TURN‑TLS)
-- Postgres + Synapse (homeserver)
-- Element Web and Element Call (Jitsi disabled)
-- LiveKit server (+ embedded TURN)
-- Recording workers: Chromium + Puppeteer + FFmpeg (host network) — one active room per worker
-- Recording controller (Flask) and publication pipeline (MP4/mp3/poster, index)
-- Recordings portal (Flask+gunicorn) with Matrix ACL:
-  - Server admins see all rooms
-  - Room admins (PL ≥ 50) see only their rooms
+## New installation
 
-Recording UX
-- A small Record button is injected into Element Web (not Element Desktop/X). Clicking it calls the controller API with the user’s Matrix token.
-- Recordings are published to /recordings and grouped by room. Room admins only see their own rooms; server admins see all.
+Use a clean Ubuntu server. This is not an upgrade or a language-migration script for an existing installation. Python 3, OpenSSL and iproute2 must be available for preflight. The installer installs Docker/Compose when absent, pulls its pinned service images and builds custom recorder/controller components. Internet access to GitHub, package repositories and image registries is required.
 
-Parallel recordings
-- Each recorder worker can handle one room at a time.
-- Use RECORDING_WORKERS to set the pool size (e.g. 4) for parallel recordings across different rooms.
-- Tested pool sizes: 1–4. Ensure sufficient CPU/GPU headroom (≈1 vCPU per 720p@15fps job + 512–768 MB RAM).
+1. Select a full 40-character commit SHA containing this source release.
+2. Download and inspect `install.sh` and `answers.example` from that commit.
+3. Copy the template to `/root/answers.conf`, set `SOURCE_COMMIT` to that SHA, fill domain, the **new server's local IP**, and TLS file paths. Use `INSTALL_LANGUAGE=en` or `ru` (default: ru). The example IP/domain must be replaced.
+4. Run as root:
 
-Known limitations
-- Element X on Android may render a “dark tile” during live TX; see Element Call known issue (Android hardware decoders). Recording from Element Web is supported and recommended.
-- answers.conf is immutable after the first successful run (fingerprint file). Update by reinstall only.
-
-Security & TLS
-- Uses local certificates issued by a local CA. Chromium/NSS inside the recorder trusts your CA.
-- DER/PEM mixed chains are handled correctly in this version.
-
-Key improvements in this version
-- Fixed handling of mixed DER/PEM certificates.
-- Verifies SERVER_IP is actually bound on the host.
-- Uses the declared IP for LiveKit `rtc.node_ip`.
-- Protects against re‑running on top of an existing/prod installation.
-- Minimal host dependencies bootstrap.
-- Local Matrix user search by displayname enabled.
-- LiveKit discovery check.
-- Validates that media IPs match the server local address.
-- Checks for all recorders, PulseAudio and Element Call readiness.
-- Extra utility scripts:
-  - Name search check script (displayname search diagnostic).
-  - Read‑only full post‑install verification script.
-
-Quick start
-1) Copy `install.sh` and create `/root/answers.conf` from `answers.example`.
-2) Place your local CA and leaf cert/key:
-   - `TLS_CERT_FILE=/root/certs/fullchain.pem`
-   - `TLS_KEY_FILE=/root/certs/privkey.pem`
-   - `CA_CERT_FILE=/root/certs/ca.crt`
-3) Dry‑run checks (no changes):
-   ```bash
-   bash install.sh --check /root/answers.conf
-   ```
-4) Install:
-   ```bash
-   bash install.sh --install /root/answers.conf
-   systemctl enable --now element-stack.service
-   ```
-
-Health checks (localhost with your CA)
 ```bash
-cd /opt/element-stack
-CACERT=certs/ca.crt
-for p in /_matrix/client/versions /.well-known/matrix/client /recording/health /recordings/; do
-  curl --silent --fail --cacert "$CACERT" --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN$p" >/dev/null && echo "OK $p" || echo "FAIL $p"
-done
+chmod 700 ./install.sh
+chmod 600 /root/answers.conf
+set -o pipefail
+bash ./install.sh --check /root/answers.conf 2>&1 | tee /root/install-check.log
+# Only after the check succeeds:
+bash ./install.sh --install /root/answers.conf 2>&1 | tee /root/install.log
 ```
 
-Default routes behind Traefik
-- https://DOMAIN/ → Element Web
-- https://DOMAIN/_matrix, /_synapse → Synapse
-- https://DOMAIN/call/ → Element Call
-- https://DOMAIN/recording/* → Controller API
-- https://DOMAIN/recordings/ → Recordings portal
-- https://DOMAIN/.well-known/matrix/* → Well‑known
+`--check` downloads/verifies the source snapshot and runs the existing preflight. It can create the generated-credentials sidecar next to answers.conf; it is not strictly read-only. Retain this private sidecar for retries. Never publish answers.conf, generated credentials, private keys, database dumps or recorder profiles.
 
-answers.conf (excerpt)
-```ini
-# Required
-DOMAIN=example.org
-HOSTNAME=matrix
-SERVER_IP=192.0.2.10
-SYNAPSE_SERVER_NAME=example.org
+`SOURCE_COMMIT` cannot be `main`, a short SHA or a tag. All files are downloaded from the same immutable commit. The GitHub manifest `installer/sources.json` lists SHA256 hashes; all listed files are checked before executing `installer/install.py`. Missing files, failed HTTPS or hash mismatches stop installation. Hashes catch corruption/inconsistent files; they are not an independent signature from a trusted third party. Review the selected commit.
 
-ADMIN_USER=admin
-ADMIN_PASSWORD=changeme
-RECORDER_USER=recorder
-RECORDER_PASSWORD=changeme
+## What is installed
 
-POSTGRES_USER=synapse
-POSTGRES_PASSWORD=changeme
-POSTGRES_DB=synapse
+Synapse, PostgreSQL, Element Web/Call, LiveKit, JWT service, Traefik, recording controller, worker pool, protected recordings portal and publisher. The supplied generation logic and fixes are preserved. `RECORDING_WORKERS` accepts 2 or 4. Image pins remain in the installation engine; do not substitute old incompatible image tags.
 
-LIVEKIT_KEY=lk_key
-LIVEKIT_SECRET=lk_secret
+The recording UI and gallery follow `INSTALL_LANGUAGE`. Element's own UI language remains a client setting. Employee search by display name is enabled; AD import and a complete employee roster are not included. Language and source commit are part of the installation fingerprint: changing answers and rerunning is not a supported migration.
 
-TLS_CERT_FILE=/root/certs/fullchain.pem
-TLS_KEY_FILE=/root/certs/privkey.pem
-CA_CERT_FILE=/root/certs/ca.crt
+Clients must reach the advertised media IP and ports (UDP 7882, TCP 7881; TURN UDP 3479/TLS TCP 5350 and configured relay UDP 30000–30020). Allow the required return traffic and verify routing. HTTPS success does not prove ICE/media connectivity. Trust your CA on client PCs, configure DNS and verify time synchronization separately. Private LAN IP preflight is retained; public NAT requires a separately reviewed configuration.
 
-# Images (pins)
-ELEMENT_WEB_IMAGE=vectorim/element-web:latest
-ELEMENT_CALL_IMAGE=ghcr.io/element-hq/element-call:latest
-SYNAPSE_IMAGE=matrixdotorg/synapse:latest
-POSTGRES_IMAGE=postgres:15
-LIVEKIT_IMAGE=livekit/livekit-server:latest
-TRAEFIK_IMAGE=traefik:2.11
-JWT_IMAGE=ghcr.io/matrix-org/lk-jwt:latest
-ADMIN_IMAGE=ghcr.io/etkecc/synapse-admin:latest
-NGINX_IMAGE=nginx:alpine
+## Source layout
 
-# Optional
-INSTALL_DIR=/opt/element-stack
-RECORDER_API_PORT=8788
-SOCAT_PORT=8090
-RECORDINGS_WEB_PORT=8899
-SYNAPSE_LOCAL_PORT=18008
-LIVEKIT_LOCAL_PORT=17880
-RECORDING_MIN_POWER_LEVEL=50
+- `install.sh`: small download/verification launcher.
+- `installer/install.py`: readable installation engine, configuration generation and existing patches.
+- `src/`: final recorder, controller, pool and portal source overrides.
+- `config/record-button.js`: recording button source.
+- `locales/en.json`: English translations; Russian source strings are retained.
+- `installer/templates/`: original source templates, publisher, package.json/lock and metadata snippet used by existing patch steps.
+- `installer/compat/`: intermediate compatibility sources from the previous installer. Final `src/` overrides are applied afterwards.
+- `installer/sources.json`: required file hashes.
+- `tools/update-source-manifest.py`: updates hashes after reviewed source edits.
 
-# NEW: parallel workers pool size
-RECORDING_WORKERS=4
-```
+No application source is decoded from Base64. Remaining inline text in install.py consists of readable configuration/build templates, tests and patches. The templates/compat stages intentionally preserve the earlier installer's generation order; they are not downloaded binaries.
 
-Operate
+## Publishing this release (repository maintainer)
+
+Copy **all contents** of the release ZIP into the repository root, preserving paths. Replace files listed as REPLACE and add NEW files in `GITHUB_PATHS.txt`. Keep existing LICENSE, contribution files and issue templates. No automatic GitHub commit is made by this package.
+
 ```bash
-systemctl status element-stack.service
-docker compose -f /opt/element-stack/compose.json ps
-docker compose -f /opt/element-stack/compose.json logs --tail=200 recorder
-ls -lah /opt/element-stack/public
+python3 tools/update-source-manifest.py
+python3 tools/validate-sources.py
+# Review your diff, then commit and push the complete release.
+git rev-parse HEAD
 ```
 
-Troubleshooting
-- 403 on start: the user must have PL ≥ RECORDING_MIN_POWER_LEVEL in the room.
-- 401 to recorder API: check RECORDER_API_TOKEN wiring between controller/pool and workers.
-- “recorder is busy”: all workers are currently occupied; increase RECORDING_WORKERS or wait.
-- Synapse won’t start: check data/synapse ownership (uid/gid 991), presence of signing.key.
-- Element X/Android: known “dark tile”; use Element Web for recording.
+Users paste the resulting SHA into their private answers.conf. Do not insert a commit's own SHA into the same commit: answers.example intentionally contains a placeholder. Publish sources and manifest together. Until this release is pushed, the current old repository commit will not work with the new launcher because required files are absent.
 
-License
-- GNU Affero General Public License v3.0 (AGPL-3.0) — aligned with upstream Element licenses.
+`config/index.html` from the old repository is not consumed by this installer: Element HTML is extracted from the pinned image and the recording button is injected during installation. Do not publish private production files as replacements.
 
+## Verification limits
+
+Bash/Python/JavaScript syntax, extraction equivalence and manifest consistency were checked. The launcher was tested against an in-memory GitHub response fixture for successful verification and corrupt-file rejection. No fresh Ubuntu/Docker deployment or real conference was performed in this environment. Validate a two-PC call, recording stop/finalization, MP4/MP3 playback, access restrictions and both languages before release to production.

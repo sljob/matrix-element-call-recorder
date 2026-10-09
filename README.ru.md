@@ -1,118 +1,68 @@
-# Matrix Element Call Recorder — Универсальный инсталлятор
+# Matrix Element Call + E2EE Recorder
 
-Status: v0.1+ (updated 2026-10-09) • Ubuntu 26.04.1 LTS (Resolute) (Tested in Production) • Docker/Compose
+[English README](README.md)
 
-Инсталлятор разворачивает полный стек Matrix + Element с E2EE‑рекордером и порталом записей с ACL.
+Запись конференций браузерным клиентом Chromium + Puppeteer + FFmpeg. В этой версии встроенные кодированные исходники заменены читаемыми файлами из **sljob/matrix-element-call-recorder**. Рекордер участвует в звонке как Matrix-клиент с E2EE-ключами, а не взламывает шифрование.
 
-Что разворачивается
-- Traefik (80/443/8448; TCP 5350 для TURN‑TLS)
-- Postgres + Synapse
-- Element Web и Element Call (встроенный Jitsi отключён)
-- LiveKit (+ встроенный TURN)
-- Рекордеры: Chromium + Puppeteer + FFmpeg (host‑network), по одному активному залу на воркер
-- Контроллер (Flask) + публикация (MP4/mp3/постер, index.html)
-- Портал записей (Flask+gunicorn) с Matrix‑ACL:
-  - Серверные админы видят все записи
-  - Админы комнат (PL ≥ 50) — только свои комнаты
+## Установка нового сервера
 
-Параллельные записи
-- Один воркер пишет одну комнату.
-- Параллельность настраивается переменной `RECORDING_WORKERS` (например, 4).
-- Тестировалось 1–4 воркера. Планируйте ресурсы: ≈1 vCPU и 512–768 МБ RAM на 720p@15fps.
+Нужен чистый Ubuntu. Это не обновление работающего сервера и не миграция языка. Для предварительной проверки нужны Python 3, OpenSSL и iproute2. Установщик устанавливает Docker/Compose при отсутствии, скачивает закреплённые образы и собирает авторские компоненты записи. Нужен доступ к GitHub, пакетным репозиториям и реестрам образов.
 
-Ограничения
-- Кнопка записи работает только в Element Web (не Desktop/X).
-- Известная проблема Element X для Android: «тёмная плитка» при трансляции. Для записи используйте Element Web.
-- `answers.conf` неизменяем после первого успешного запуска (фиксируется отпечаток).
+1. Выберите полный SHA коммита из 40 символов, в котором опубликован весь этот комплект.
+2. Скачайте и просмотрите `install.sh` и `answers.example` из выбранного коммита.
+3. Скопируйте шаблон в `/root/answers.conf`. Укажите `SOURCE_COMMIT`, домен, **локальный IP нового сервера** и пути к TLS-файлам. Пример домена/IP обязательно замените. Язык выбирается через `INSTALL_LANGUAGE=ru` или `en`; без параметра используется ru.
+4. От root выполните:
 
-Безопасность и TLS
-- Используются локальные сертификаты локального УЦ. В эту версию добавлена корректная обработка смешанных DER/PEM‑цепочек; CA импортируется в NSS (Chromium доверяет).
-
-Новое в этой версии
-- Исправлена обработка смешанных DER/PEM‑сертификатов.
-- Проверяется, что `SERVER_IP` действительно назначен серверу.
-- Указанный IP используется в LiveKit `rtc.node_ip`.
-- Защита от повторного запуска поверх старой/production‑установки.
-- Минимальная установка зависимостей хоста.
-- Включён поиск локальных Matrix‑пользователей по displayname.
-- Проверка LiveKit discovery.
-- Проверка соответствия медиа‑IP локальному адресу сервера.
-- Проверка всех рекордеров, PulseAudio и Element Call.
-- Дополнительные скрипты:
-  - Проверка поиска по ФИО (displayname).
-  - Read‑only полный скрипт верификации установки.
-
-Быстрый старт
-1) Скопируйте `install.sh` и создайте `/root/answers.conf` из `answers.example`.
-2) Положите сертификаты:
-   - `TLS_CERT_FILE=/root/certs/fullchain.pem`
-   - `TLS_KEY_FILE=/root/certs/privkey.pem`
-   - `CA_CERT_FILE=/root/certs/ca.crt`
-3) Проверка без изменений:
-   ```bash
-   bash install.sh --check /root/answers.conf
-   ```
-4) Установка:
-   ```bash
-   bash install.sh --install /root/answers.conf
-   systemctl enable --now element-stack.service
-   ```
-
-Проверки (через traefik и локальный CA)
 ```bash
-cd /opt/element-stack
-CACERT=certs/ca.crt
-for p in /_matrix/client/versions /.well-known/matrix/client /recording/health /recordings/; do
-  curl --silent --fail --cacert "$CACERT" --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN$p" >/dev/null && echo "OK $p" || echo "FAIL $p"
-done
+chmod 700 ./install.sh
+chmod 600 /root/answers.conf
+set -o pipefail
+bash ./install.sh --check /root/answers.conf 2>&1 | tee /root/install-check.log
+# Только после успешной проверки:
+bash ./install.sh --install /root/answers.conf 2>&1 | tee /root/install.log
 ```
 
-Основные маршруты
-- https://DOMAIN/ → Element Web
-- https://DOMAIN/_matrix, /_synapse → Synapse
-- https://DOMAIN/call/ → Element Call
-- https://DOMAIN/recording/* → Controller API
-- https://DOMAIN/recordings/ → Портал записей
-- https://DOMAIN/.well-known/matrix/* → Well‑known
+Режим `--check` скачивает и проверяет исходники, затем запускает прежнюю предварительную проверку. Он может создать рядом с answers.conf файл с автоматически сгенерированными паролями: это не строго read-only режим. Сохраните этот закрытый файл для повторной попытки. Не публикуйте answers.conf, пароли, приватные ключи, дампы БД и профили рекордеров.
 
-Фрагмент answers.conf
-```ini
-DOMAIN=example.org
-HOSTNAME=matrix
-SERVER_IP=192.0.2.10
-SYNAPSE_SERVER_NAME=example.org
-ADMIN_USER=admin
-ADMIN_PASSWORD=changeme
-RECORDER_USER=recorder
-RECORDER_PASSWORD=changeme
-POSTGRES_USER=synapse
-POSTGRES_PASSWORD=changeme
-POSTGRES_DB=synapse
-LIVEKIT_KEY=lk_key
-LIVEKIT_SECRET=lk_secret
+`SOURCE_COMMIT` принимает только полный SHA, не `main`, тег или короткий SHA. Все файлы скачиваются из одного коммита. В `installer/sources.json` указаны SHA256 файлов; весь комплект проверяется до запуска `installer/install.py`. Ошибка HTTPS, отсутствие файла или несовпадение хеша останавливают установку. Хеши защищают от повреждённого/несогласованного комплекта, но не являются независимой цифровой подписью. Выбранный коммит нужно просмотреть.
 
-TLS_CERT_FILE=/root/certs/fullchain.pem
-TLS_KEY_FILE=/root/certs/privkey.pem
-CA_CERT_FILE=/root/certs/ca.crt
+## Состав и настройки
 
-# Размер пула параллельных записей
-RECORDING_WORKERS=4
-```
+Synapse, PostgreSQL, Element Web/Call, LiveKit, JWT service, Traefik, контроллер записи, пул рекордеров, закрытый портал записей и публикация MP4/MP3. Сохранена логика генерации конфигурации и исправлений приложенного установщика. `RECORDING_WORKERS` — 2 или 4. Закреплённые образы находятся в движке установки; не подменяйте их старыми несовместимыми тегами.
 
-Эксплуатация
+Язык кнопки записи и портала выбирает `INSTALL_LANGUAGE`. Штатный Element использует собственную настройку языка. Поиск сотрудников по отображаемому имени включён; импорт AD и постоянный список всех сотрудников не добавлены. Язык и SOURCE_COMMIT входят в отпечаток конфигурации: редактирование answers.conf и повторный запуск не являются поддерживаемой миграцией.
+
+ПК должны достигать объявленного медиа-IP: UDP 7882, TCP 7881; для TURN — UDP 3479, TLS TCP 5350 и настроенный диапазон relay UDP 30000–30020. Проверьте маршрутизацию и обратный трафик. HTTPS не подтверждает работоспособность ICE/медиа. Настройте DNS, доверие CA на ПК и отдельно проверьте синхронизацию времени. Сохранена проверка локального LAN IP; схема публичного NAT требует отдельной конфигурации.
+
+## Структура исходников
+
+- `install.sh` — небольшой загрузчик и проверка файлов.
+- `installer/install.py` — открытый движок установки, генерация конфигурации и прежние исправления.
+- `src/` — финальные версии рекордера, контроллера, пула и портала.
+- `config/record-button.js` — исходник кнопки записи.
+- `locales/en.json` — английские переводы; русские строки остаются в исходниках.
+- `installer/templates/` — исходные шаблоны, publisher, package.json/lock и вставка метаданных для существующих шагов исправления.
+- `installer/compat/` — промежуточные совместимые версии из прежнего установщика; после них применяются финальные `src/`.
+- `installer/sources.json` — перечень нужных файлов и их хешей.
+- `tools/update-source-manifest.py` — пересчёт хешей после проверенных изменений.
+
+Декодирования исходного кода из Base64 больше нет. В install.py остаются читаемые конфигурационные шаблоны, Dockerfile, тесты и исправления строк. Промежуточные templates/compat намеренно сохраняют порядок генерации прежнего установщика.
+
+## Публикация в вашем GitHub
+
+Скопируйте **всё содержимое ZIP в корень репозитория**, сохранив вложенные пути. В `GITHUB_PATHS.txt` указано: NEW — добавить, REPLACE — заменить. Сохраните существующие LICENSE, CONTRIBUTING и настройки issues. Комплект сам ничего не публикует в GitHub.
+
 ```bash
-systemctl status element-stack.service
-docker compose -f /opt/element-stack/compose.json ps
-docker compose -f /opt/element-stack/compose.json logs --tail=200 recorder
-ls -lah /opt/element-stack/public
+python3 tools/update-source-manifest.py
+python3 tools/validate-sources.py
+# Просмотрите diff, затем закоммитьте и отправьте весь комплект.
+git rev-parse HEAD
 ```
 
-Типичные проблемы
-- 403 при старте: у пользователя нет PL ≥ RECORDING_MIN_POWER_LEVEL.
-- 401 к recorder API: проверьте связку `RECORDER_API_TOKEN` между пулом/контроллером и воркерами.
-- «recorder is busy»: все воркеры заняты — увеличьте `RECORDING_WORKERS` или дождитесь освобождения.
-- Synapse не стартует: права на data/synapse (uid/gid 991), наличие signing.key.
-- Element X/Android: «тёмная плитка» — записывайте через Element Web.
+Полученный полный SHA пользователи вписывают в свой приватный answers.conf. Не пытайтесь вписать SHA коммита в него самого: в answers.example специально оставлен заполнитель. Файлы и manifest публикуются одним коммитом. Пока комплект не загружен на GitHub, новый загрузчик не сможет работать с прежним коммитом: нужных файлов там нет.
 
-Лицензия
-- GNU Affero General Public License v3.0 (AGPL-3.0) — aligned with upstream Element licenses.
+Старый `config/index.html` не используется установщиком: HTML Element извлекается из закреплённого образа, затем вставляется кнопка. Не заменяйте исходники приватными файлами production-сервера.
+
+## Проверки и ограничения
+
+Проверены синтаксис Bash/Python/JavaScript, совпадение извлечённых исходников и manifest. Загрузчик протестирован на имитации ответов GitHub: успешная загрузка и остановка при повреждении файла. Установка на чистой Ubuntu, Docker-сборка и реальный звонок здесь не выполнялись. Перед production проверьте звонок с двух ПК, остановку и завершение записи, воспроизведение MP4/MP3, права доступа и обе локализации.

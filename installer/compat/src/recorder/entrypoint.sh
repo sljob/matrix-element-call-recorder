@@ -4,10 +4,7 @@ set -euo pipefail
 rm -f /tmp/.X99-lock /tmp/.X11-unix/X99 /tmp/pulse/native
 
 mkdir -p /tmp/pulse /out /public /work/profile-spk
-# Clear only this worker's stale marker after its previous process has exited.
-find /out -maxdepth 1 -type f -name "rec-*${WORKER_INDEX}.mp4.active" -delete
-# Chromium recreates process locks; the persistent crypto database is retained.
-rm -f /work/profile-spk/SingletonLock /work/profile-spk/SingletonSocket /work/profile-spk/SingletonCookie
+rm -f /out/*.active
 export DISPLAY=:99
 export PULSE_SERVER=unix:/tmp/pulse/native
 Xvfb :99 -screen 0 1280x720x24 -nolisten tcp &

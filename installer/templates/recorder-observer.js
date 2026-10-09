@@ -9,67 +9,49 @@ process.on('SIGTERM', () => { __sigReceived = true; console.log('[SIGNAL] SIGTER
 const EC = process.env.EC_URL || 'http://127.0.0.1:8090';
 const OUT = process.env.OUT_DIR || '/out';
 const HS = process.env.MATRIX_HS || 'https://meet.milorada.ru';
-const SYN = process.env.SYNAPSE_URL || 'http://element-synapse-1:8008';
+const SYN = process.env.SYNAPSE_URL || 'http://172.18.0.3:8008';
 const LK_INT = process.env.LK_INTERNAL || '172.21.0.6:7880';
 const REC_USER = process.env.REC_USER || 'recorder';
-const REC_PASS = process.env.REC_PASS || 'PLACEHOLDER';
+const REC_PASS = process.env.REC_PASS || 'Milorada2026!';
 const REQ_REMOTE = process.env.REQUIRE_REMOTE === '1';
-const MIN_WAIT = parseInt(process.env.MIN_WAIT || '0', 10);
-const WAIT_V = parseInt(process.env.WAIT_VID || '20', 10);
+const MIN_WAIT = parseInt(process.env.MIN_WAIT || '12', 10);
+const WAIT_V = parseInt(process.env.WAIT_VID || '120', 10);
 const ROOM_ID = process.env.ROOM_ID;
 const OUT_FILE = process.env.OUT_FILE;
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
 
-
-// Fresh Matrix login; persistent browser crypto store is created by Element Call.
-async function matrixRequest(path, method='GET', body, token) {
-  const r = await fetch(SYN + path, {
-    method,
-    headers: {'Content-Type':'application/json',
-      ...(token ? {Authorization:'Bearer ' + token} : {})},
-    body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(20000)
-  });
-  const data = await r.json();
-  if (!r.ok) throw new Error('Matrix HTTP ' + r.status + ': ' + JSON.stringify(data));
-  return data;
-}
-const login = await matrixRequest('/_matrix/client/v3/login', 'POST', {
-  type:'m.login.password',
-  identifier:{type:'m.id.user', user:REC_USER},
-  password:REC_PASS,
-  device_id:(process.env.REC_DEVICE_ID || 'RECORDER001'),
-  initial_device_display_name:'Conference recorder'
-});
-const accessToken = login.access_token;
-const userId = login.user_id;
-const deviceId = login.device_id;
-if (!ROOM_ID) throw new Error('ROOM_ID required');
-await matrixRequest('/_matrix/client/v3/join/' + encodeURIComponent(ROOM_ID),
-                    'POST', {}, accessToken);
-console.log('[AUTH] Login and room join OK: ' + userId);
+// LOGIN
+console.log('[AUTH] Login via curl to ' + SYN);
+let accessToken=null, userId=null, deviceId=null;
 try {
-  const events = await matrixRequest('/_matrix/client/v3/rooms/'
-       + encodeURIComponent(ROOM_ID) + '/state', 'GET', undefined, accessToken);
-  for (const ev of events) {
-    if (ev.type === 'org.matrix.msc3401.call.member'
-        && ev.sender === userId && Object.keys(ev.content || {}).length) {
-      await matrixRequest('/_matrix/client/v3/rooms/'
-        + encodeURIComponent(ROOM_ID) + '/state/org.matrix.msc3401.call.member/'
-        + encodeURIComponent(ev.state_key), 'PUT', {}, accessToken);
+  const cmd = `curl -s -X POST '${SYN}/_matrix/client/v3/login' -H 'Content-Type: application/json' -d '{"type":"m.login.password","user":"${REC_USER}","password":"${REC_PASS}","device_id":"RECORDER001"}'`;
+  const data = JSON.parse(execSync(cmd, {encoding:'utf8', timeout:10000}).trim());
+  if (data.access_token) { accessToken=data.access_token; userId=data.user_id; deviceId=data.device_id; console.log('[AUTH] OK user='+userId+' device='+deviceId); }
+  else { console.log('[AUTH] FAIL '+JSON.stringify(data).slice(0,200)); }
+} catch(e) { console.log('[AUTH] Error: '+e.message); }
+if (!accessToken) process.exit(1);
+
+// CLEAN stale call.member
+try {
+  const stateRaw = execSync(`curl -s '${SYN}/_matrix/client/v3/rooms/${ROOM_ID}/state' -H 'Authorization: Bearer ${accessToken}'`, {encoding:'utf8', timeout:10000});
+  const events = JSON.parse(stateRaw);
+  if (!Array.isArray(events)) { console.log('[CLEAN] state response not array: ' + stateRaw.slice(0,200)); }
+  let cleaned=0;
+  for (const ev of (Array.isArray(events) ? events : [])) {
+    if (ev.type==='org.matrix.msc3401.call.member' && ev.sender && ev.sender.includes('recorder') && Object.keys(ev.content||{}).length>0) {
+      const sk=encodeURIComponent(ev.state_key);
+      execSync(`curl -s -X PUT '${SYN}/_matrix/client/v3/rooms/${ROOM_ID}/state/org.matrix.msc3401.call.member/${sk}' -H 'Authorization: Bearer ${accessToken}' -H 'Content-Type: application/json' -d '{}'`, {encoding:'utf8', timeout:10000});
+      cleaned++;
     }
   }
-} catch (e) { console.log('[CLEAN] ' + e.message); }
+  console.log('[CLEAN] Очищено '+cleaned+' stale call.member');
+} catch(e) { console.log('[CLEAN] Error: '+e.message); }
 
 // BROWSER
 const browser = await puppeteer.launch({
-  // APP_OWNS_BROWSER_SIGNALS_V1
-  handleSIGINT: false,
-  handleSIGTERM: false,
-
   executablePath:'/usr/bin/chromium', headless:false,
   env:{...process.env, PULSE_SERVER:'unix:/tmp/pulse/native', DISPLAY:':99'},
-  args:['--unsafely-treat-insecure-origin-as-secure=http://127.0.0.1:8090,http://call:8080',
+  args:['--ignore-certificate-errors','--unsafely-treat-insecure-origin-as-secure=http://127.0.0.1:8090',
     '--allow-running-insecure-content','--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage',
     '--user-data-dir=/work/profile-spk','--autoplay-policy=no-user-gesture-required',
     '--disable-audio-output-muting','--alsa-output-device=default',
@@ -117,7 +99,7 @@ await page.evaluateOnNewDocument((hs, tok, uid, did, lkInt) => {
       newUrl = url.replace(/^wss?:\/\/[^\/]+\/livekit-server/, 'ws://' + window.__LK_INTERNAL_URL);
       newUrl = newUrl.replace(/^wss?:\/\/[^\/]+(:\d+)?\/rtc/, 'ws://' + window.__LK_INTERNAL_URL + '/rtc');
       window.__lkStats.rewrites++;
-      console.log('[WS_REWRITE] internal LiveKit');
+      console.log('[WS_REWRITE] ' + newUrl.slice(0,120));
     }
     const ws = new origWS(newUrl, protocols);
     ws.addEventListener('open', () => { window.__lkStats.wsOpen++; console.log('[WS_OPEN]'); });
@@ -137,21 +119,28 @@ await page.evaluateOnNewDocument((hs, tok, uid, did, lkInt) => {
   }
 }, HS, accessToken, userId, deviceId, LK_INT);
 
-// LOAD V08 — сразу в комнату, без главной страницы
+// LOAD
+console.log('[NAV] Loading Element Call: ' + EC);
+await page.goto(EC+'/', {waitUntil:'networkidle2', timeout:60000});
+await sleep(parseInt(process.env.W_BOOT||'3000',10));
 console.log('[CONFIG] LiveKit internal: ' + LK_INT);
 
-// MATRIX API V08 — sync пропущен, ROOM_ID задан
-const ROOM = ROOM_ID;
+// MATRIX API
+const mx = (p,o={}) => page.evaluate(async(hs,p,t,o)=>{
+  try{ const r=await fetch(hs+p,{method:o.method||'GET', headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'}, body:o.body?JSON.stringify(o.body):undefined}); let b=null; try{b=await r.json();}catch{} return {status:r.status, body:b}; }catch(e){return{error:String(e)};}
+}, HS,p,accessToken,o);
+const f = encodeURIComponent(JSON.stringify({room:{timeline:{limit:1}}}));
+const sync = await mx(`/_matrix/client/v3/sync?timeout=0&filter=${f}`);
+console.log('[SYNC] status=' + (sync.status||sync.error));
+const ROOM = ROOM_ID || Object.keys(sync.body?.rooms?.join||{})[0];
 console.log('[ROOM] ' + ROOM);
 if (!ROOM) { console.log('[FATAL] No room'); process.exit(1); }
 
 // NAVIGATE
 const P = new URLSearchParams({roomId:ROOM, skipLobby:'true', hideHeader:'true', showControls:'false', displayName:'Recorder', returnToLobby:'false'});
 console.log('[NAV] Going to room...');
-await page.goto(`${EC}/room/#?${P}`,{waitUntil:'domcontentloaded',timeout:60000}).catch(()=>{});
-// OBSERVER_SPEEDUP_V06
-await page.waitForFunction(() => { const btns = [...document.querySelectorAll('button,[role=button]')].filter(b => b.offsetParent !== null); return btns.some(b => /join/i.test((b.textContent||'').trim()) || /join/i.test(b.getAttribute('aria-label')||'')); }, {timeout: 15000, polling: 200}).catch(() => console.log('[NAV] Join button not found in 15s'));
-await sleep(500);
+await page.goto(`${EC}/room/#?${P}`,{waitUntil:'networkidle2',timeout:60000}).catch(()=>{});
+await sleep(parseInt(process.env.W_ROOM||'8000',10));
 const roomText = await page.evaluate(() => document.body?.innerText?.slice(0,500) || 'EMPTY');
 console.log('[ROOM] Text: ' + roomText.slice(0,300));
 
@@ -180,16 +169,31 @@ async function clickJoinButtons() {
   }
 }
 await clickJoinButtons();
-await sleep(1000);
+await sleep(3000);
 
-// OBSERVER_FAST_JOIN_V07 — без повторного клика
+// Wait for page navigation after join (Element Call changes view)
+try {
+  await page.waitForNavigation({waitUntil:'networkidle2', timeout:15000});
+  console.log('[NAV] Post-join navigation done');
+} catch(e) {
+  console.log('[NAV] No post-join navigation (or timeout): ' + e.message.slice(0,100));
+}
+
+// Re-get page reference in case of navigation
 let currentPage = page;
 try {
   const pages = await browser.pages();
-  if (pages.length > 0) currentPage = pages[pages.length - 1];
-} catch(e) {}
+  if (pages.length > 0) {
+    currentPage = pages[pages.length - 1];
+    console.log('[NAV] Using page: ' + pages.length + ' pages available');
+  }
+} catch(e) {
+  console.log('[NAV] Page lookup error: ' + e.message.slice(0,100));
+}
 
-await sleep(2000);
+await sleep(parseInt(process.env.W_GATE||'3000',10));
+await clickJoinButtons();
+await sleep(3000);
 
 // Screenshot
 try {
@@ -211,8 +215,8 @@ await sleep(1000);
 
 console.log(`\n[VIDEO] Waiting ${WAIT_V}s...\n`);
 let gotRemote = false, finalSnap = null;
-for (let i = 0; i < WAIT_V && !__sigReceived; i += 5) {
-  await sleep(parseInt(process.env.W_POLL||'200',10));
+for (let i = 0; i < WAIT_V; i += 5) {
+  await sleep(parseInt(process.env.W_POLL||'1000',10));
   let snap;
   try {
     snap = await currentPage.evaluate(() => {
@@ -261,7 +265,7 @@ try { await currentPage.screenshot({path:`${OUT}/p56-02-before-rec.png`}); } cat
 
 // RECORD — ВАРИАНТ B: композиция видео через page.screenshot, x11grab removed
 // ==== E3: ЗАХВАТ В ФАЙЛ ====
-if (gotRemote && !__sigReceived) {
+if (gotRemote) {
   const SECS = parseInt(process.env.RECORD_SECS || '30', 10);
   const outFile = process.env.OUT_FILE || `${OUT}/rec-${Date.now()}.mp4`;
   console.log(`[REC] Запись ${SECS}s -> ${outFile}`);
@@ -324,57 +328,4 @@ if (finalSnap) console.log('ICE: ' + (finalSnap.iceStates||[]).join(','));
 console.log('════════════════════════════════════════════════\n');
 fs.writeFileSync(`${OUT}/p56-result.json`, JSON.stringify({gotRemote, snap: finalSnap, wsLogs: logs.filter(l => /WS_|ICE|PC_|INJECT|AUTH|error|fail|join|sync/i.test(l)).slice(0, 80)}, null, 2));
 logs.filter(l => /ICE|PC_|WS_|INJECT|AUTH|JOIN|error|fail|sync/i.test(l)).slice(0, 60).forEach(l => console.log('  ' + l.slice(0, 200)));
-console.log('[SHUTDOWN] closing browser');
 await browser.close();
-console.log('[SHUTDOWN] browser closed');
-
-// GUARANTEED_CLEANUP_V06
-if (!gotRemote) { console.log('[CLEANUP] Recording never started, cleaning up'); }
-// CLEAR_RECORDER_CALL_MEMBERSHIP_V1
-try {
-  const statePath = '/_matrix/client/v3/rooms/'
-    + encodeURIComponent(ROOM_ID) + '/state';
-  const state = await matrixRequest(
-    statePath, 'GET', undefined, accessToken
-  );
-  if (!Array.isArray(state)) throw new Error('Invalid room state response');
-
-  let cleared = 0;
-  for (const ev of state) {
-    if (ev.type !== 'org.matrix.msc3401.call.member'
-        || ev.sender !== userId
-        || typeof ev.state_key !== 'string'
-        || !Object.keys(ev.content || {}).length) continue;
-
-    await matrixRequest(
-      statePath + '/' + encodeURIComponent(ev.type)
-      + '/' + encodeURIComponent(ev.state_key),
-      'PUT', {}, accessToken
-    );
-    cleared++;
-  }
-
-  const checked = await matrixRequest(
-    statePath, 'GET', undefined, accessToken
-  );
-  const remaining = checked.filter(ev =>
-    ev.type === 'org.matrix.msc3401.call.member'
-    && ev.sender === userId
-    && Object.keys(ev.content || {}).length
-  ).length;
-
-  console.log('[HANGUP] cleared=' + cleared + ' remaining=' + remaining);
-  if (remaining) throw new Error('Recorder call membership remains');
-
-  const otherTypes = [...new Set(checked.filter(ev =>
-    ev.sender === userId
-    && /(?:rtc|call).*member/i.test(ev.type)
-    && ev.type !== 'org.matrix.msc3401.call.member'
-    && Object.keys(ev.content || {}).length
-  ).map(ev => ev.type))];
-  if (otherTypes.length)
-    console.log('[HANGUP] other membership types: ' + otherTypes.join(','));
-} catch (e) {
-  console.error('[HANGUP] FAILED: ' + e.message);
-  process.exitCode = 1;
-}
