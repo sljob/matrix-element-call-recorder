@@ -1,147 +1,51 @@
-# Matrix Element Call Recorder — One‑shot Installer
+# Multilingual installer (ru/en)
 
-Status: v0.1+ (updated 2026-10-08) • Ubuntu 22.04/24.04 • Docker/Compose
+## Language setting
 
-This repository ships a single installer that provisions a complete Matrix + Element stack with an end‑to‑end encrypted headless recorder and an ACL‑protected recordings portal.
+Add to answers.conf before the first installation:
 
-What it installs
-- Traefik reverse proxy (TLS offload; 80/443/8448; TCP 5350 for TURN‑TLS)
-- Postgres + Synapse (homeserver)
-- Element Web and Element Call (Jitsi disabled)
-- LiveKit server (+ embedded TURN)
-- Recording workers: Chromium + Puppeteer + FFmpeg (host network) — one active room per worker
-- Recording controller (Flask) and publication pipeline (MP4/mp3/poster, index)
-- Recordings portal (Flask+gunicorn) with Matrix ACL:
-  - Server admins see all rooms
-  - Room admins (PL ≥ 50) see only their rooms
+    INSTALL_LANGUAGE=en
 
-Recording UX
-- A small Record button is injected into Element Web (not Element Desktop/X). Clicking it calls the controller API with the user’s Matrix token.
-- Recordings are published to /recordings and grouped by room. Room admins only see their own rooms; server admins see all.
+or:
 
-Parallel recordings
-- Each recorder worker can handle one room at a time.
-- Use RECORDING_WORKERS to set the pool size (e.g. 4) for parallel recordings across different rooms.
-- Tested pool sizes: 1–4. Ensure sufficient CPU/GPU headroom (≈1 vCPU per 720p@15fps job + 512–768 MB RAM).
+    INSTALL_LANGUAGE=ru
 
-Known limitations
-- Element X on Android may render a “dark tile” during live TX; see Element Call known issue (Android hardware decoders). Recording from Element Web is supported and recommended.
-- answers.conf is immutable after the first successful run (fingerprint file). Update by reinstall only.
+When omitted, ru is used for backward compatibility. Unsupported values are rejected. Language is part of the installation configuration fingerprint: changing answers.conf and rerunning the installer is NOT an in-place language migration.
 
-Security & TLS
-- Uses local certificates issued by a local CA. Chromium/NSS inside the recorder trusts your CA.
-- DER/PEM mixed chains are handled correctly in this version.
+## Scope
 
-Key improvements in this version
-- Fixed handling of mixed DER/PEM certificates.
-- Verifies SERVER_IP is actually bound on the host.
-- Uses the declared IP for LiveKit `rtc.node_ip`.
-- Protects against re‑running on top of an existing/prod installation.
-- Minimal host dependencies bootstrap.
-- Local Matrix user search by displayname enabled.
-- LiveKit discovery check.
-- Validates that media IPs match the server local address.
-- Checks for all recorders, PulseAudio and Element Call readiness.
-- Extra utility scripts:
-  - Name search check script (displayname search diagnostic).
-  - Read‑only full post‑install verification script.
+The selection controls generated recorder button labels, statuses and application-defined errors, the recordings sign-in page, protected recordings gallery, publisher HTML, and translated installer diagnostics. English dates use YYYY-MM-DD HH:MM:SS. User-generated room names and employee names are not translated. Element Web/Desktop's own interface and operating-system/package-manager messages retain their own language settings. Technical third-party exceptions and protocol error codes are not translated.
 
-Quick start
-1) Copy `install.sh` and create `/root/answers.conf` from `answers.example`.
-2) Place your local CA and leaf cert/key:
-   - `TLS_CERT_FILE=/root/certs/fullchain.pem`
-   - `TLS_KEY_FILE=/root/certs/privkey.pem`
-   - `CA_CERT_FILE=/root/certs/ca.crt`
-3) Dry‑run checks (no changes):
-   ```bash
-   bash install.sh --check /root/answers.conf
-   ```
-4) Install:
-   ```bash
-   bash install.sh --install /root/answers.conf
-   systemctl enable --now element-stack.service
-   ```
+The installer contains both translation dictionaries and original embedded source comments; choosing English does not remove all Cyrillic from the downloadable source file. Additional languages require a reviewed dictionary and tests; only ru/en are currently supported.
 
-Health checks (localhost with your CA)
-```bash
-cd /opt/element-stack
-CACERT=certs/ca.crt
-for p in /_matrix/client/versions /.well-known/matrix/client /recording/health /recordings/; do
-  curl --silent --fail --cacert "$CACERT" --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN$p" >/dev/null && echo "OK $p" || echo "FAIL $p"
-done
-```
+## Installation
 
-Default routes behind Traefik
-- https://DOMAIN/ → Element Web
-- https://DOMAIN/_matrix, /_synapse → Synapse
-- https://DOMAIN/call/ → Element Call
-- https://DOMAIN/recording/* → Controller API
-- https://DOMAIN/recordings/ → Recordings portal
-- https://DOMAIN/.well-known/matrix/* → Well‑known
+Only for a new Ubuntu host. Do not run over the working production server.
 
-answers.conf (excerpt)
-```ini
-# Required
-DOMAIN=example.org
-HOSTNAME=matrix
-SERVER_IP=192.0.2.10
-SYNAPSE_SERVER_NAME=example.org
+    chmod 700 install.sh
+    chmod 600 /root/answers.conf
+    set -o pipefail
+    bash ./install.sh --check /root/answers.conf 2>&1 | tee /root/install-check.log
+    bash ./install.sh --install /root/answers.conf 2>&1 | tee /root/install.log
 
-ADMIN_USER=admin
-ADMIN_PASSWORD=changeme
-RECORDER_USER=recorder
-RECORDER_PASSWORD=changeme
+Replace example domain/IP and provide TLS files first. SERVER_IP must be assigned to the new server. The existing recorder implementations and image pins are retained. This installer downloads missing images and builds its custom recorder components, as the supplied installer does; it is not the offline archive restore procedure.
 
-POSTGRES_USER=synapse
-POSTGRES_PASSWORD=changeme
-POSTGRES_DB=synapse
+Use answers.example rather than the older template containing postgres:15, traefik:2.11 and legacy JWT images. Keep generated credential sidecar files private and retain them for a retry.
 
-LIVEKIT_KEY=lk_key
-LIVEKIT_SECRET=lk_secret
+## Changes
 
-TLS_CERT_FILE=/root/certs/fullchain.pem
-TLS_KEY_FILE=/root/certs/privkey.pem
-CA_CERT_FILE=/root/certs/ca.crt
+- INSTALL_LANGUAGE=ru/en validated before configuration fingerprint calculation.
+- One central English translation dictionary; source localization runs after embedded fixes and before syntax checks/builds.
+- Existing button behavior tests localized together with the button.
+- Language saved in config/install-language.json.
+- Fixed damaged quoting in the supplied embedded recorder source; fallback test hostname replaced with the configured deployment hostname during generation.
+- Existing local IP checks, TLS normalization and name-search setting retained.
 
-# Images (pins)
-ELEMENT_WEB_IMAGE=vectorim/element-web:latest
-ELEMENT_CALL_IMAGE=ghcr.io/element-hq/element-call:latest
-SYNAPSE_IMAGE=matrixdotorg/synapse:latest
-POSTGRES_IMAGE=postgres:15
-LIVEKIT_IMAGE=livekit/livekit-server:latest
-TRAEFIK_IMAGE=traefik:2.11
-JWT_IMAGE=ghcr.io/matrix-org/lk-jwt:latest
-ADMIN_IMAGE=ghcr.io/etkecc/synapse-admin:latest
-NGINX_IMAGE=nginx:alpine
+## Validation performed
 
-# Optional
-INSTALL_DIR=/opt/element-stack
-RECORDER_API_PORT=8788
-SOCAT_PORT=8090
-RECORDINGS_WEB_PORT=8899
-SYNAPSE_LOCAL_PORT=18008
-LIVEKIT_LOCAL_PORT=17880
-RECORDING_MIN_POWER_LEVEL=50
+- bash -n on final install.sh.
+- Python AST parsing of the installer.
+- Python AST/Node syntax checks of generated ru/en recorder, controller, pool, gallery and publisher source.
+- ru/en gallery render checks for labels and preservation/escaping of Cyrillic user room names.
 
-# NEW: parallel workers pool size
-RECORDING_WORKERS=4
-```
-
-Operate
-```bash
-systemctl status element-stack.service
-docker compose -f /opt/element-stack/compose.json ps
-docker compose -f /opt/element-stack/compose.json logs --tail=200 recorder
-ls -lah /opt/element-stack/public
-```
-
-Troubleshooting
-- 403 on start: the user must have PL ≥ RECORDING_MIN_POWER_LEVEL in the room.
-- 401 to recorder API: check RECORDER_API_TOKEN wiring between controller/pool and workers.
-- “recorder is busy”: all workers are currently occupied; increase RECORDING_WORKERS or wait.
-- Synapse won’t start: check data/synapse ownership (uid/gid 991), presence of signing.key.
-- Element X/Android: known “dark tile”; use Element Web for recording.
-
-License
-- Apache‑2.0 (recommended).
-
+Not tested here: Docker installation, deployment on Ubuntu, browser rendering screenshots, remote ICE/media or end-to-end recording. After installation, perform a two-PC call and record/stop/playback test.

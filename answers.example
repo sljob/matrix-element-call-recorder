@@ -1,46 +1,23 @@
-# answers.example — anonymized answers.conf template
-# Copy to /root/answers.conf and fill in values.
+# Deployment UI language: en or ru. Default when omitted: ru.
+INSTALL_LANGUAGE=en
 
-# Core
 DOMAIN=example.org
 HOSTNAME=matrix
 SERVER_IP=192.0.2.10
 SYNAPSE_SERVER_NAME=example.org
 
-# Admins
 ADMIN_USER=admin
-ADMIN_PASSWORD=change-me-strong
-
-# Recorder bot
+# Omit passwords to use the installer's persisted generated credentials.
 RECORDER_USER=recorder
-RECORDER_PASSWORD=change-me-strong
-
-# Database
 POSTGRES_USER=synapse
-POSTGRES_PASSWORD=change-me-strong
 POSTGRES_DB=synapse
 
-# LiveKit
-LIVEKIT_KEY=lk_key
-LIVEKIT_SECRET=lk_secret
-
-# TLS (local CA)
 TLS_CERT_FILE=/root/certs/fullchain.pem
 TLS_KEY_FILE=/root/certs/privkey.pem
 CA_CERT_FILE=/root/certs/ca.crt
 
-# Images (pin your versions)
-ELEMENT_WEB_IMAGE=vectorim/element-web:latest
-ELEMENT_CALL_IMAGE=ghcr.io/element-hq/element-call:latest
-SYNAPSE_IMAGE=matrixdotorg/synapse:latest
-POSTGRES_IMAGE=postgres:15
-LIVEKIT_IMAGE=livekit/livekit-server:latest
-TRAEFIK_IMAGE=traefik:2.11
-JWT_IMAGE=ghcr.io/matrix-org/lk-jwt:latest
-ADMIN_IMAGE=ghcr.io/etkecc/synapse-admin:latest
-NGINX_IMAGE=nginx:alpine
-
-# Optional
+# Use the installer's existing pinned image defaults.
+# Do not replace them with incompatible legacy tags from older templates.
 INSTALL_DIR=/opt/element-stack
 RECORDER_API_PORT=8788
 SOCAT_PORT=8090
@@ -48,6 +25,8 @@ RECORDINGS_WEB_PORT=8899
 SYNAPSE_LOCAL_PORT=18008
 LIVEKIT_LOCAL_PORT=17880
 RECORDING_MIN_POWER_LEVEL=50
-
-# Parallel recordings pool size (workers; one room per worker)
 RECORDING_WORKERS=4
+
+# Replace example.org and 192.0.2.10 before installation.
+# SERVER_IP must be assigned to the new server and reachable from clients.
+# ru example: INSTALL_LANGUAGE=ru
