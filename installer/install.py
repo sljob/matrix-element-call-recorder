@@ -1116,7 +1116,7 @@ for _language_relative in (
     _language_file = root / _language_relative
     _language_text = _language_file.read_text(encoding="utf-8")
     # Replace fallback test-server URL restored from the known-good embedded source.
-    _language_text = _language_text.replace("https://meet.milorada.ru", baseurl)
+    _language_text = _language_text.replace("https://host.example.org", baseurl)
     _language_file.write_text(localize(_language_text), encoding="utf-8")
 write(root / "config/install-language.json", json.dumps({"language": INSTALL_LANGUAGE}) + "\n")
 

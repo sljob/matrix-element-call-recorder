@@ -8,7 +8,7 @@ process.on('SIGTERM', () => { __sigReceived = true; console.log('[SIGNAL] SIGTER
 
 const EC = process.env.EC_URL || 'http://127.0.0.1:8090';
 const OUT = process.env.OUT_DIR || '/out';
-const HS = process.env.MATRIX_HS || 'https://meet.milorada.ru';
+const HS = process.env.MATRIX_HS || 'https://host.example.org';
 const SYN = process.env.SYNAPSE_URL || 'http://element-synapse-1:8008';
 const LK_INT = process.env.LK_INTERNAL || '172.21.0.6:7880';
 const REC_USER = process.env.REC_USER || 'recorder';
