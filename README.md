@@ -143,5 +143,5 @@ Troubleshooting
 - Element X/Android: known “dark tile”; use Element Web for recording.
 
 License
-- Apache‑2.0 (recommended).
+- GNU Affero General Public License v3.0 (AGPL-3.0) — aligned with upstream Element licenses.
 
