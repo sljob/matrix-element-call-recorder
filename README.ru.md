@@ -1,6 +1,6 @@
 # Matrix Element Call Recorder — Универсальный инсталлятор
 
-Статус: v0.1+ (обновлено 2026-10-08) • Ubuntu 22.04/24.04 • Docker/Compose
+Status: v0.1+ (updated 2026-10-09) • Ubuntu 26.04.1 LTS (Resolute) (Tested in Production) • Docker/Compose
 
 Инсталлятор разворачивает полный стек Matrix + Element с E2EE‑рекордером и порталом записей с ACL.
 
