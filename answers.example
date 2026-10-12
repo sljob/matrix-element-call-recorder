@@ -1,0 +1,35 @@
+# Deployment UI language: en or ru. Default when omitted: ru.
+INSTALL_LANGUAGE=en
+
+DOMAIN=example.org
+HOSTNAME=matrix
+SERVER_IP=192.0.2.10
+SYNAPSE_SERVER_NAME=example.org
+
+ADMIN_USER=admin
+# Omit passwords to use the installer's persisted generated credentials.
+RECORDER_USER=recorder
+POSTGRES_USER=synapse
+POSTGRES_DB=synapse
+
+TLS_CERT_FILE=/root/certs/fullchain.pem
+TLS_KEY_FILE=/root/certs/privkey.pem
+CA_CERT_FILE=/root/certs/ca.crt
+
+# Use the installer's existing pinned image defaults.
+# Do not replace them with incompatible legacy tags from older templates.
+INSTALL_DIR=/opt/element-stack
+RECORDER_API_PORT=8788
+SOCAT_PORT=8090
+RECORDINGS_WEB_PORT=8899
+SYNAPSE_LOCAL_PORT=18008
+LIVEKIT_LOCAL_PORT=17880
+RECORDING_MIN_POWER_LEVEL=50
+RECORDING_WORKERS=4
+
+# Replace example.org and 192.0.2.10 before installation.
+# SERVER_IP must be assigned to the new server and reachable from clients.
+# ru example: INSTALL_LANGUAGE=ru
+
+# Publish all source files first, then paste the resulting full commit SHA.
+SOURCE_COMMIT=REPLACE_WITH_40_CHARACTER_COMMIT_SHA

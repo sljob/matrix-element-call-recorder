@@ -1,0 +1,32 @@
+# Real configuration and credentials (keep local)
+answers.conf
+.env
+.env.*
+!*.example
+
+# Private/runtime directories
+/certs/
+/private/
+/backups/
+/logs/
+/data/
+/out/
+/public/
+/profile-spk/
+/chrome-profile/
+
+# Dependencies and caches
+node_modules/
+__pycache__/
+
+# Certificates and private keys
+*.pem
+*.key
+*.p12
+*.pfx
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

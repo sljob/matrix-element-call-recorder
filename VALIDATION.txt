@@ -1,0 +1,4 @@
+Passed: Bash syntax, Python AST, Node syntax, source extraction equivalence, SHA256 manifest consistency.
+Passed: bootstrap fixture verifies every file before engine invocation; corrupt source rejected.
+Not performed: live GitHub download of unpublished release, Ubuntu deployment, Docker build, browser/ICE/E2EE recording.
+Repository inspected at f2499cf228b0534cccb8145a152408a2eb223353.
