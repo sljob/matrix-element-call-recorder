@@ -1,0 +1,4 @@
+PASS: Matrix-auth-aware ACL mock including equal-PL ban, self-demotion, bot-only thresholds, rollback.
+PASS Python/Bash/install+rollback syntax.
+Intervals publisher5s adapter5s collector15s.
+NOT RUN real Cloud patch.

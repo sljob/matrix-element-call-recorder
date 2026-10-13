@@ -1,6 +1,25 @@
 {
-  "schema": 1,
   "files": {
+    "addons/staff-directory/GITHUB-DESKTOP.ru.md": "085eb70c92d003768ac75dde6755b25e27a3831b8e34547e84c68de824e09036",
+    "addons/staff-directory/LICENSE": "8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef",
+    "addons/staff-directory/README.md": "a2aeffe72303d9c4d4dde6f9b8fd2fbd5e61270bb632cb41af76c42bda0e6d41",
+    "addons/staff-directory/README.ru.md": "56ad4df60a8721ae7fd7924539b5f7d74e4d5fb3f12c5c1b73c0eb1af198ee8c",
+    "addons/staff-directory/TEST-RESULTS.txt": "c278dc4aa8c1f1762a0246736f04e9831309f8ba1957a916c15f02e3f0db6314",
+    "addons/staff-directory/acceptance.py": "8f522099498a81960896fb60bc6265ffc875d3c90744962671217b6a9bd7ee89",
+    "addons/staff-directory/acceptance.sh": "7ea6dff1c149983ef8880014a0f132d58fd8161ecc177838a25cadef62684c11",
+    "addons/staff-directory/answers_bridge.py": "c9c09c500060b2476e306391f1c9e1ef5c65e5ad73b019dd4d404a8ada5c0d69",
+    "addons/staff-directory/collector.py": "e427d595a2d07620fb1b3061d970a5f5d3860a828423c8365f1d107313a589de",
+    "addons/staff-directory/credentials.py": "5f95528b1b716d7594bf76da025cb58083a86c805cd860381bc470925ea8d866",
+    "addons/staff-directory/device_origin.py": "1833cb13c198f33e093296a4f1c96c265c052e385ed389fe78626bbb1fec47d5",
+    "addons/staff-directory/device_snapshot.py": "c06ce7db2305e98fa51cc61d74f04a6e1c56c440df56b2408225e6760ad46115",
+    "addons/staff-directory/disable-addon.sh": "d10f6e3660e84309394be1692ad953f5ed88f9e418b1be8225a3d83a77a872af",
+    "addons/staff-directory/docker_adapter.py": "03bfc9a32ae5d4f10d2cd8eff1030fb1836f1f6fdf3ef77a01c27e46c36c8e0f",
+    "addons/staff-directory/install.sh": "6b3dd808e87e37a7549aee450d83cfa04f3d68e0ef724b2284182a657dff61bb",
+    "addons/staff-directory/provision.py": "3ce61272969fd5ec1ac6931d02cacd00a9eddad8846082eab7f75b899c4eb980",
+    "addons/staff-directory/server_support.py": "19dcf68b0c2c13e51d55a3856aabe55b6cd3c941ab842b94552e73f15391ac32",
+    "addons/staff-directory/staff_directory.py": "5b8f3d3eaca349c040f54be27af2dd7a4ec16e2c6094c875a2f74fc35aa06010",
+    "addons/staff-directory/test_cloud.py": "413b2ba25d3fd4a845b065d8a440ce20c7a2dec2670844e538ca9fc0125207b8",
+    "addons/staff-directory/test_origin.py": "5d52d17d2855873f5594ca4c2eb78b7cf27c1263ff639e1f3f5bdde421bc7da4",
     "config/record-button.js": "7790f0b6bef25a88195a711e02bbfeb56ccd77baa5926060eb39ea5db333e284",
     "installer/compat/src/controller/app.py": "56f90bbcda8926c171cadfd94f307817f45ee47880bf31e37caf1357712d1683",
     "installer/compat/src/recorder/entrypoint.sh": "01bf8c465ebd07f7eeb85c78bdb92a0a1fa1f19954d17fb36ebe91982c45a41c",
@@ -24,5 +43,6 @@
     "src/recorder/pool-loopback-supervisor.py": "0028204a626f6d97565b8ff2d211b5c341c865a14249ce974981b0373e8dce8c",
     "src/recorder/server.js": "d9a386274faf3041b4ee7b91d26369a80422a0b8345aad3c179af4ca3d698246",
     "src/recordings-auth/app.py": "db149a7f44fb524366dcf5e54d94f2bc79cd2f2e398b8c187de239ed539d37e4"
-  }
+  },
+  "schema": 1
 }

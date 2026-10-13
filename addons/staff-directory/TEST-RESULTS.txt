@@ -1,0 +1,5 @@
+Cloud operator report 2026-10-13: initial INSTALL OK + patch26 ROOM OK, VERIFY OK readback, fresh collector, desktop/mobile labels and active addon services. Existing production containers not restarted by addon.
+Meet earlier status logic PASS4/4. Cloud four-stage acceptance NOT supplied.
+0.1.6 packaging: 9 unit/mock tests pass including initial provisioning and source selection.
+New initial room policy admin99/bot100 is created directly, no equal-PL demotion required.
+Fresh VM whole-stack STAFF_DIRECTORY_ENABLED=true NOT executed. No claim of complete end-to-end release validation.

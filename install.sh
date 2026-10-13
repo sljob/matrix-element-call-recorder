@@ -73,9 +73,20 @@ try:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
             print('Verified:', path, flush=True)
-        # Every file is fetched and verified before the privileged engine executes.
+        # Validate optional addon selection BEFORE the main engine changes anything.
+        bridge = root / 'addons/staff-directory/answers_bridge.py'
+        check = subprocess.run([sys.executable, str(bridge), '--check', str(answers)])
+        if check.returncode:
+            raise SystemExit(check.returncode)
         result = subprocess.run([sys.executable, str(root / 'installer/install.py'), mode, str(answers)])
-        raise SystemExit(result.returncode)
+        if result.returncode:
+            raise SystemExit(result.returncode)
+        if mode == '--install':
+            addon = subprocess.run([sys.executable, str(bridge), '--install', str(answers)])
+            if addon.returncode:
+                print('Main stack completed; optional staff addon failed. Do NOT rerun the main installer on production.', flush=True)
+            raise SystemExit(addon.returncode)
+        raise SystemExit(0)
 except (OSError, ValueError, RuntimeError) as error:
     raise SystemExit('Source installation stopped: ' + str(error))
 BOOTSTRAP_PY
