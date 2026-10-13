@@ -101,4 +101,6 @@ STAFF_DIRECTORY_ENABLED=false
 
 `patches/26_cloud_acl_origin_fast.sh` — сохранён успешно применённый адресный патч ТОЛЬКО для исходного Cloud0.1.5 без этих изменений. Бот100 не может понизить другого100; исправление сначала самопонижает admin99 его токеном, затем бот меняет thresholds. При первой установке0.1.6 это не требуется. Patch не для повторного применения и не замена самостоятельного install.sh.
 
-Инструкция GitHub Desktop: addons/staff-directory/GITHUB-DESKTOP.ru.md. Новые bootstrap, addon и sources.json нужно публиковать одним commit. SOURCE_COMMIT — полный SHA коммита со всем комплектом. Публикация исходников не означает пройденную fresh-VM приёмку. Статусы интерфейса дополнения пока на русском независимо от INSTALL_LANGUAGE.
+Статусы интерфейса дополнения пока на русском независимо от INSTALL_LANGUAGE.
+
+<img width="1496" height="217" alt="Screenshot 2026-10-13 173355" src="https://github.com/user-attachments/assets/90f7ed24-be55-4c95-821b-6bd595fab7cd" />
