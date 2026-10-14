@@ -73,7 +73,10 @@ class ProvisionMock(unittest.TestCase):
     if path.endswith('/login'):return {'access_token':'mock-bot-token'}
     if path.endswith('/joined_rooms'):return {'joined_rooms':[]}
     if path.endswith('/createRoom'):
-     self.levels=data['power_level_content_override'];return {'room_id':'!staff:cloud.example.org'}
+     levels=data['power_level_content_override']
+     assert levels['kick']==99 and levels['users']['@admin:cloud.example.org']==99
+     assert levels['invite']==50 and levels['events']['m.room.message']==100 and levels['events']['m.reaction']==100
+     self.levels=levels;return {'room_id':'!staff:cloud.example.org'}
     if '/state/m.room.power_levels/' in path:return self.levels
     if '/join/' in path:return {'room_id':'!staff:cloud.example.org'}
     raise AssertionError(path)

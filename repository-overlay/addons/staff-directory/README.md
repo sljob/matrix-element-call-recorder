@@ -33,3 +33,13 @@ Operator confirmed Cloud INSTALL OK and patch26 on13 October2026: ROOM OK, fresh
 patches/26_cloud_acl_origin_fast.sh preserves the successfully applied patch for ORIGINAL unmodified Cloud0.1.5 only. It uses admin self-demotion before bot ACL changes because equal-power users cannot demote each other. Not a standalone installer or a repeatable migration; new0.1.6 provisioning does not need this step.
 
 Publish bootstrap, addon and sources.json in one commit. SOURCE_COMMIT must identify the complete source commit. Publication is not proof of fresh-VM validation. Addon status text is currently Russian, independently of INSTALL_LANGUAGE. Desktop publication guide: addons/staff-directory/GITHUB-DESKTOP.ru.md.
+
+### Managing Staff room members
+
+The room administrator at PL99 can **invite and remove members below PL99**, but cannot post messages/reactions. New provisioning uses `invite=50`, **`kick=99`**, messages/reactions=100, bot=100 and room admin=99. The admin cannot remove another PL99 user or the PL100 bot. Ban (`ban=100`) and redaction (`redact=100`) permissions are not relaxed. Removing someone from this room does not deactivate their server account.
+
+In Element: People → select a member → **Remove from room**. For a pending invitation, cancel the invitation. Removed users disappear from the directory on the next refresh; past membership events and messages remain in history. **Deactivate user** is a server-wide action, not the way to remove a member from Staff.
+
+If clicking Record accidentally adds Recorder, stop any active recording and wait for finalization before removing it. **Do not deactivate Recorder**, which is needed by other calls. Removal does not prevent the recording button from inviting it again; blocking recording specifically in Staff is not part of this fix.
+
+For an older configured addon with `kick=100`, run **`bash addons/staff-directory/enable-member-removal.sh`** from a local checkout. It changes only kick to99, saves permissions and verifies readback; it removes nobody and restarts no services/containers. If already99, no change is made. Use the printed `--restore BACKUP_DIR` command to restore, which refuses to overwrite externally changed rights. **Current Cloud already received script27; do not reapply unnecessarily.** On14 October2026 the operator confirmed kick99 readback and the removal action in Element.

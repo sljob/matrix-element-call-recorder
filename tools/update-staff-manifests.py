@@ -31,16 +31,16 @@ with zipfile.ZipFile(root/'addon.zip') as z:
 PY
 bash "$DEST/install.sh"
 '''.replace('DIGEST',hashlib.sha256(raw).hexdigest())
-(ADDON/'standalone.sh').write_text(script)
+(ADDON/'standalone.sh').write_bytes(script.encode('utf-8'))
 mfile=ROOT/'installer/sources.json';manifest=json.loads(mfile.read_text())
 for path in ADDON.iterdir():
     if path.is_file() and path.name!='standalone.sh':manifest['files'][path.relative_to(ROOT).as_posix()]=''
 for name in list(manifest['files']):manifest['files'][name]=hashlib.sha256((ROOT/name).read_bytes()).hexdigest()
-mfile.write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n')
+mfile.write_bytes((json.dumps(manifest,indent=2,sort_keys=True)+'\n').encode('utf-8'))
 paths=set()
 for line in (ROOT/'SHA256SUMS').read_text().splitlines():
     if '  ' in line:paths.add(line.split('  ',1)[1])
 paths.update(p.relative_to(ROOT).as_posix() for p in ADDON.rglob('*') if p.is_file() and '__pycache__' not in p.parts)
 paths.update(['tools/update-staff-manifests.py','tools/validate-staff-release.py'])
-(ROOT/'SHA256SUMS').write_text(''.join(hashlib.sha256((ROOT/name).read_bytes()).hexdigest()+'  '+name+'\n' for name in sorted(paths) if (ROOT/name).is_file()))
+(ROOT/'SHA256SUMS').write_bytes(''.join(hashlib.sha256((ROOT/name).read_bytes()).hexdigest()+'  '+name+'\n' for name in sorted(paths) if (ROOT/name).is_file()).encode('utf-8'))
 print('Standalone rebuilt; sources.json and SHA256SUMS updated. No installation performed.')

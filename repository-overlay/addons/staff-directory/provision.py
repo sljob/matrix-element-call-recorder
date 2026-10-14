@@ -199,7 +199,7 @@ try:
         if rooms:
             progress['room_id']=rooms[0]
         else:
-            levels={'users':{progress['bot_user_id']:100,admin_id:99},'users_default':0,'events_default':100,'state_default':100,'invite':50,'kick':100,'ban':100,'redact':100,'notifications':{'room':100},'events':{'m.room.message':100,'m.reaction':100,'m.sticker':100,'m.room.encrypted':100,'m.room.encryption':100}}
+            levels={'users':{progress['bot_user_id']:100,admin_id:99},'users_default':0,'events_default':100,'state_default':100,'invite':50,'kick':99,'ban':100,'redact':100,'notifications':{'room':100},'events':{'m.room.message':100,'m.reaction':100,'m.sticker':100,'m.room.encrypted':100,'m.room.encryption':100}}
             progress['room_id']=bot.call('POST',MATRIX+'/createRoom',{'name':'Сотрудники','visibility':'private','preset':'private_chat','invite':[admin_id],'power_level_content_override':levels,'initial_state':[{'type':'m.room.history_visibility','state_key':'','content':{'history_visibility':'shared'}}],'topic':'Справочник статусов; без E2EE. Бот не читает другие комнаты.'})['room_id']
         save(progress)
     # Join only the NEW room with administrator's explicit installation consent.

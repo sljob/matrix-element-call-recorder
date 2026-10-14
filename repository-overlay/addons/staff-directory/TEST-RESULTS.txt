@@ -3,3 +3,7 @@ Meet earlier status logic PASS4/4. Cloud four-stage acceptance NOT supplied.
 0.1.6 packaging: 9 unit/mock tests pass including initial provisioning and source selection.
 New initial room policy admin99/bot100 is created directly, no equal-PL demotion required.
 Fresh VM whole-stack STAFF_DIRECTORY_ENABLED=true NOT executed. No claim of complete end-to-end release validation.
+
+2026-10-14 Cloud operator: script27 kick100->99 readback OK; UI remove-member action available; recorder excluded.
+New provisioning regression test verifies kick99/admin99/invite50/message100/reaction100.
+Fresh VM end-to-end still not executed.
