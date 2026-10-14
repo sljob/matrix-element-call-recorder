@@ -42,6 +42,8 @@ To install **without** the directory, use `STAFF_DIRECTORY_ENABLED=false` (the t
 
 **sljob** designed the requirements and architecture and is responsible for deployment, testing, and release decisions. The author has a Microsoft Server systems-administration background and had a little over a year of Docker and Ubuntu experience when developing the project over approximately three months. **LLM tools helped write scripts and documentation under human direction**; the author defined requirements, validated results, resolved failures, and decided what to publish. This is a transparent account of the workflow, not a claim that every line was written solely by AI or that Element/Matrix officially supports this solution. The author is proud of this independent implementation without making unverifiable claims of worldwide exclusivity.
 
+This repository is successfully used on the production server in the author’s organization. That is, it is fully operational.
+
 This repository is **not an official Element or Matrix release**. Screenshots and demo media can be added here later.
 
 ## New installation
