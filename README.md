@@ -128,4 +128,6 @@ Operator confirmed Cloud INSTALL OK and patch26 on13 October2026: ROOM OK, fresh
 
 patches/26_cloud_acl_origin_fast.sh preserves the successfully applied patch for ORIGINAL unmodified Cloud0.1.5 only. It uses admin self-demotion before bot ACL changes because equal-power users cannot demote each other. Not a standalone installer or a repeatable migration; new0.1.6 provisioning does not need this step.
 
-Publish bootstrap, addon and sources.json in one commit. SOURCE_COMMIT must identify the complete source commit. Publication is not proof of fresh-VM validation. Addon status text is currently Russian, independently of INSTALL_LANGUAGE. Desktop publication guide: addons/staff-directory/GITHUB-DESKTOP.ru.md.
+SOURCE_COMMIT must identify the complete source commit. Publication is not proof of fresh-VM validation. Addon status text is currently Russian, independently of INSTALL_LANGUAGE. Desktop publication guide: addons/staff-directory/GITHUB-DESKTOP.ru.md.
+<img width="1496" height="217" alt="Screenshot 2026-10-13 173355" src="https://github.com/user-attachments/assets/a869e54a-edc2-43e7-bad4-37a38ea9d19a" />
+
