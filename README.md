@@ -4,6 +4,35 @@
 
 Browser-based conference recording using Chromium, Puppeteer and FFmpeg. This release replaces encoded installer payloads with readable files downloaded from **sljob/matrix-element-call-recorder**. The recorder participates in the call as a Matrix client with E2EE keys; it does not break encryption.
 
+## What this project does
+
+An independent implementation for recording **audio and video** from E2EE Element Call/MatrixRTC conferences. The recorder joins the call as a regular participant with access to the encryption keys in headless Chromium; Puppeteer and FFmpeg capture and process the media. It is **not a built-in Element Call feature** and does not bypass encryption. See [my posts in Element Call recording issue #283](https://github.com/element-hq/element-call/issues/283) for background and architectural discussion.
+
+- **Fast start.** In the author's observed deployments, the recorder bot typically joins and begins recording about **3–5 seconds** after Start is clicked. This is not a guaranteed SLA; server load and component readiness affect timing.
+- **Who may start.** A room creator or a member with sufficient Matrix Power Level can start a recording; a Synapse server administrator can also start it while in a room with a conference. The room threshold is configurable in `answers.conf` via `RECORDING_MIN_POWER_LEVEL=50` by default. The actual room permissions are checked; a displayed role label alone does not grant permission.
+- **Publication and playback.** Once capture and processing finish, the file is automatically published to a recordings archive associated with its room. The **Recordings** link beside the recording button opens `/recordings/` in a new browser tab. If sign-in is required, use the **same Matrix account** as Element; the archive has no separate account. This does not promise automatic single sign-on without re-entering credentials.
+- **Access control.** Room administrators can view and download recordings **only from their authorized rooms**, where they remain members and meet the required Power Level. Synapse server administrators can access all recordings. Authorization is enforced both for the index and file requests: possession of a URL does not itself grant access. Current permissions, not merely the identity of the recording initiator, determine access.
+- **Concurrent rooms.** A pool of independent recorder workers supports recording different rooms in parallel; configure the pool with `RECORDING_WORKERS` (example: 4). The author tested the deployed stack, but throughput depends on CPU, memory, and participant count.
+- **Display-name search.** A default Synapse installation may limit discovery of other users. This installer's generated Synapse configuration explicitly enables `user_directory` with `search_all_users: true` and `prefer_local_users: true`. This increases account discoverability; review the organization's privacy policy before deployment.
+
+### Staff directory: optional at first install or standalone
+
+Install the directory **separately** on an existing server without it (`addons/staff-directory/standalone.sh`), or select it for the **initial installation of a new server**. In the `answers.conf` copied from `answers.example`, set:
+
+```ini
+STAFF_DIRECTORY_ENABLED=true
+```
+
+To install **without** the directory, use `STAFF_DIRECTORY_ENABLED=false` (the template default) or omit the option. The Synapse admin token is requested interactively for the addon; **never store it in answers**. Do not rerun the main installer or modify the existing answers file on the current Cloud production server. The addon creates one bot and one private room; only invited members who join appear in the directory.
+
+**Presence accuracy.** On the author's servers, Matrix presence generally works for Element Desktop and Element Web. In the tested Element X mobile scenario, Matrix presence sometimes reported `offline` despite activity, while LiveKit correctly detected participation in a video conference as busy. When presence is offline, the addon instead labels a device request to Synapse within the last 10 minutes **Recently online**. This is not exact online presence, proof of an unlocked screen, or evidence that someone is working from a phone: background sync can update the timestamp. The **last request: mobile / PC** label is inferred from the latest device and its User-Agent; unknown types are explicitly shown as unknown. The Element X presence behavior has been reported to its developers. [Recording issue #283](https://github.com/element-hq/element-call/issues/283) is about recording, **not a presence bug report**.
+
+### Authorship and AI assistance
+
+**sljob** designed the requirements and architecture and is responsible for deployment, testing, and release decisions. The author has a Microsoft Server systems-administration background and had a little over a year of Docker and Ubuntu experience when developing the project over approximately three months. **LLM tools helped write scripts and documentation under human direction**; the author defined requirements, validated results, resolved failures, and decided what to publish. This is a transparent account of the workflow, not a claim that every line was written solely by AI or that Element/Matrix officially supports this solution. The author is proud of this independent implementation without making unverifiable claims of worldwide exclusivity.
+
+This repository is **not an official Element or Matrix release**. Screenshots and demo media can be added here later.
+
 ## New installation
 
 Use a clean Ubuntu server. This is not an upgrade or a language-migration script for an existing installation. Python 3, OpenSSL and iproute2 must be available for preflight. The installer installs Docker/Compose when absent, pulls its pinned service images and builds custom recorder/controller components. Internet access to GitHub, package repositories and image registries is required.
