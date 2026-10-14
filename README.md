@@ -8,12 +8,21 @@ Browser-based conference recording using Chromium, Puppeteer and FFmpeg. This re
 
 An independent implementation for recording **audio and video** from E2EE Element Call/MatrixRTC conferences. The recorder joins the call as a regular participant with access to the encryption keys in headless Chromium; Puppeteer and FFmpeg capture and process the media. It is **not a built-in Element Call feature** and does not bypass encryption. See [my posts in Element Call recording issue #283](https://github.com/element-hq/element-call/issues/283) for background and architectural discussion.
 
+<img width="1105" height="362" alt="image" src="https://github.com/user-attachments/assets/b44db679-7ed2-45bb-9564-eafc025c2c98" />
+
+<img width="1908" height="694" alt="image" src="https://github.com/user-attachments/assets/8ea47731-82ee-47d7-b47c-d47df3148188" />
+
+<img width="1883" height="937" alt="image" src="https://github.com/user-attachments/assets/298cd194-6b35-4fff-8d0b-b708c4ec28bf" />
+
 - **Fast start.** In the author's observed deployments, the recorder bot typically joins and begins recording about **3–5 seconds** after Start is clicked. This is not a guaranteed SLA; server load and component readiness affect timing.
 - **Who may start.** A room creator or a member with sufficient Matrix Power Level can start a recording; a Synapse server administrator can also start it while in a room with a conference. The room threshold is configurable in `answers.conf` via `RECORDING_MIN_POWER_LEVEL=50` by default. The actual room permissions are checked; a displayed role label alone does not grant permission.
 - **Publication and playback.** Once capture and processing finish, the file is automatically published to a recordings archive associated with its room. The **Recordings** link beside the recording button opens `/recordings/` in a new browser tab. If sign-in is required, use the **same Matrix account** as Element; the archive has no separate account. This does not promise automatic single sign-on without re-entering credentials.
 - **Access control.** Room administrators can view and download recordings **only from their authorized rooms**, where they remain members and meet the required Power Level. Synapse server administrators can access all recordings. Authorization is enforced both for the index and file requests: possession of a URL does not itself grant access. Current permissions, not merely the identity of the recording initiator, determine access.
 - **Concurrent rooms.** A pool of independent recorder workers supports recording different rooms in parallel; configure the pool with `RECORDING_WORKERS` (example: 4). The author tested the deployed stack, but throughput depends on CPU, memory, and participant count.
 - **Display-name search.** A default Synapse installation may limit discovery of other users. This installer's generated Synapse configuration explicitly enables `user_directory` with `search_all_users: true` and `prefer_local_users: true`. This increases account discoverability; review the organization's privacy policy before deployment.
+
+<img width="689" height="560" alt="image" src="https://github.com/user-attachments/assets/4fa86e30-c13f-4dca-9cac-d862c7ddd1ab" />
+
 
 ### Staff directory: optional at first install or standalone
 
@@ -26,6 +35,8 @@ STAFF_DIRECTORY_ENABLED=true
 To install **without** the directory, use `STAFF_DIRECTORY_ENABLED=false` (the template default) or omit the option. The Synapse admin token is requested interactively for the addon; **never store it in answers**. Do not rerun the main installer or modify the existing answers file on the current Cloud production server. The addon creates one bot and one private room; only invited members who join appear in the directory.
 
 **Presence accuracy.** On the author's servers, Matrix presence generally works for Element Desktop and Element Web. In the tested Element X mobile scenario, Matrix presence sometimes reported `offline` despite activity, while LiveKit correctly detected participation in a video conference as busy. When presence is offline, the addon instead labels a device request to Synapse within the last 10 minutes **Recently online**. This is not exact online presence, proof of an unlocked screen, or evidence that someone is working from a phone: background sync can update the timestamp. The **last request: mobile / PC** label is inferred from the latest device and its User-Agent; unknown types are explicitly shown as unknown. The Element X presence behavior has been reported to its developers. [Recording issue #283](https://github.com/element-hq/element-call/issues/283) is about recording, **not a presence bug report**.
+
+<img width="1496" height="217" alt="Screenshot 2026-10-13 173355" src="https://github.com/user-attachments/assets/a869e54a-edc2-43e7-bad4-37a38ea9d19a" />
 
 ### Authorship and AI assistance
 
@@ -129,5 +140,5 @@ Operator confirmed Cloud INSTALL OK and patch26 on13 October2026: ROOM OK, fresh
 patches/26_cloud_acl_origin_fast.sh preserves the successfully applied patch for ORIGINAL unmodified Cloud0.1.5 only. It uses admin self-demotion before bot ACL changes because equal-power users cannot demote each other. Not a standalone installer or a repeatable migration; new0.1.6 provisioning does not need this step.
 
 SOURCE_COMMIT must identify the complete source commit. Publication is not proof of fresh-VM validation. Addon status text is currently Russian, independently of INSTALL_LANGUAGE. Desktop publication guide: addons/staff-directory/GITHUB-DESKTOP.ru.md.
-<img width="1496" height="217" alt="Screenshot 2026-10-13 173355" src="https://github.com/user-attachments/assets/a869e54a-edc2-43e7-bad4-37a38ea9d19a" />
+
 
