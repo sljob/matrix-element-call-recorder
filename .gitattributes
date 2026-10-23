@@ -1,0 +1,13 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Keep published hashes identical on Windows and Linux.
+*.md text eol=lf
+*.py text eol=lf
+*.sh text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.txt text eol=lf
+*.example text eol=lf
+SHA256SUMS text eol=lf
+.gitattributes text eol=lf

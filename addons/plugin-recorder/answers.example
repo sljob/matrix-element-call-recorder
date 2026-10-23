@@ -1,0 +1,128 @@
+# =============================================================================
+# Matrix Element Call Recorder Plugin v2.0 — Answer File
+# Copy to 'answers.env' and edit, then run:
+#   ./install.sh --answers answers.env
+# Modes (CLI flag overrides INSTALL_ACTION):
+#   --check      Verify server readiness & missing components (read-only)
+#   --install    Install or upgrade the plugin
+#   --repair     Re-apply mounts, Traefik routes & Element module registration
+#   --uninstall  Cleanly remove plugin (preserves recordings & bot E2EE profile)
+# =============================================================================
+
+# --- Installer mode & language ------------------------------------------------
+# install | check | repair | uninstall
+INSTALL_ACTION="install"
+
+# Installer console/log language: ru | en
+INSTALLER_LANG="ru"
+
+# What to do if required host components (Docker, FFmpeg, jq, containers) are missing:
+# prompt = ask interactively | yes = auto-install | no = abort with report
+INSTALL_MISSING_COMPONENTS="prompt"
+
+# --- Button UI settings (written to Element Web config.json) ------------------
+# Button caption language in Element Web: auto (follow Element UI) | ru | en
+BUTTON_LANG="ru"
+
+# Keep Record/Stop bar always visible in room header (true) or only during active call (false)
+BUTTON_ALWAYS_VISIBLE="true"
+
+# Show "Recordings" link next to Record/Stop buttons: true | false
+BUTTON_SHOW_RECORDINGS_LINK="true"
+
+# Relative paths on the current origin (no domain hardcoding; resolved via window.location.origin)
+RECORDING_API_PREFIX="/recording"
+RECORDINGS_PUBLIC_PATH="/recordings/"
+
+# Status polling interval while room is open (milliseconds)
+BUTTON_POLL_INTERVAL_MS="5000"
+
+# --- UI integration method ----------------------------------------------------
+# module = official Element Web Module API via /modules/recorder & 18-load-element-modules.sh
+UI_INTEGRATION_MODE="module"
+
+# --- Target server discovery --------------------------------------------------
+# Public Matrix/Element domain. Leave "auto" to read from existing Element/Traefik config.
+DOMAIN="auto"
+
+# Root directory of the existing Matrix deployment ("auto" inspects running containers, falls back to /matrix)
+BASE_DIR="auto"
+
+# Existing container names ("auto" detects by image vectorim/element-web, element-call, matrixdotorg/synapse, traefik)
+ELEMENT_WEB_CONTAINER="auto"
+ELEMENT_CALL_CONTAINER="auto"
+SYNAPSE_CONTAINER="auto"
+TRAEFIK_CONTAINER="auto"
+
+# Local URL where recorder-p44 (--network=host) reaches Element Call UI
+ELEMENT_CALL_INTERNAL_URL="http://127.0.0.1:8090"
+
+# Docker network shared with Traefik and Synapse ("auto" detects from Element Web container)
+DOCKER_ADDONS_NETWORK="auto"
+
+# --- Recorder bot accounts ----------------------------------------------------
+# Number of recorder bot accounts to provision (1 for single call at a time, >1 for parallel calls)
+RECORDER_BOT_COUNT="1"
+
+# Explicit comma-separated usernames (overrides prefix if set, e.g. "spk" or "rec1,rec2").
+# Leave "spk" on servers deployed by the monolithic installer to reuse existing profile-spk!
+RECORDER_BOT_USERS="spk"
+
+# Username prefix used when RECORDER_BOT_USERS is empty and RECORDER_BOT_COUNT >= 1 (creates recorder-1, recorder-2, ...)
+RECORDER_BOT_PREFIX="recorder"
+
+# Bot password(s): single password applied to all bots, comma-separated list matching RECORDER_BOT_USERS,
+# or empty "" to auto-generate and save into ${BASE_DIR}/recorder/bots.env
+RECORDER_BOT_PASSWORDS=""
+
+# Display name shown in the room when the recorder joins
+RECORDER_BOT_DISPLAYNAME="Call Recorder"
+
+# Persistent Chromium/Matrix E2EE session directory (CRITICAL: never deleted on uninstall/repair)
+RECORDER_BOT_PROFILE_DIR="/matrix/recorder/profile-spk"
+
+# Automatically invite & grant power level to recorder bot via Application Service: true | false
+ENABLE_APPSERVICE_AUTO_INVITE="true"
+
+# --- Synapse connection -------------------------------------------------------
+# Internal URL to Synapse client-server API ("auto" inspects synapse container on matrix network)
+SYNAPSE_INTERNAL_URL="auto"
+
+# Synapse registration_shared_secret ("auto" reads from homeserver.yaml)
+SYNAPSE_REGISTRATION_SHARED_SECRET="auto"
+
+# Path to homeserver.yaml ("auto" detects from synapse container mounts)
+SYNAPSE_CONFIG_PATH="auto"
+
+# --- TLS / Self-signed CA support (Chromium in recorder-p44) ------------------
+# Path to custom root CA certificate if server uses self-signed TLS ("auto" checks /matrix/ssl/*.crt)
+CUSTOM_CA_CERT="auto"
+
+# Optional SPKI pin hash for Chromium --ignore-certificate-errors-spki-list ("auto" computes from cert)
+CHROMIUM_SPKI_HASH="auto"
+
+# --- Recorder runtime & ports -------------------------------------------------
+# Host port for recorder-p44 HTTP API (bound on host network, reached by controller via docker bridge gateway)
+RECORDER_HOST_PORT="8788"
+
+# Internal port for recording-controller Flask API
+CONTROLLER_PORT="8765"
+
+# Port for rec-http static recordings index
+REC_HTTP_PORT="8899"
+
+# Port for rb-appservice
+APPSERVICE_PORT="9009"
+
+# Directory on host where finished MP4/MP3/JPG + index.html are stored and published
+RECORDINGS_DIR="/matrix/recordings"
+
+# Video capture parameters for Chromium + FFmpeg x11grab
+RECORD_RESOLUTION="1280x720"
+RECORD_FRAMERATE="25"
+RECORD_VIDEO_BITRATE="2500k"
+RECORD_AUDIO_BITRATE="128k"
+
+# --- Uninstall safety ---------------------------------------------------------
+# Keep recorded MP4 files and bot E2EE profile (profile-spk) on --uninstall: true | false
+PRESERVE_DATA_ON_UNINSTALL="true"

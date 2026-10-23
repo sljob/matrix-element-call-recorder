@@ -1,0 +1,28 @@
+# --- secrets and runtime state: never commit -----------------------------
+answers*.conf
+!answers.example
+vendor/*.js
+vendor/*.SOURCE.tmp
+*.log
+
+# recorder profiles hold the Matrix session and E2EE keys
+profile/
+storageState.json
+**/profile/**
+
+# recordings and publications
+output/
+public/
+*.mp4
+*.mp3
+*.jpg
+!testbed/fake-web/*.jpg
+
+# plugin state
+state/
+backups/
+ca/
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
