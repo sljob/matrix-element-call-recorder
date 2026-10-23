@@ -1,0 +1,60 @@
+# ==========================================================================
+#  Локальный стенд для проверки плагина БЕЗ второго Matrix-сервера.
+#
+#  Поднимает минимальный «уже работающий» сервер: Traefik + фейковый
+#  Element Web (nginx, отдающий index.html и config.json) + сеть, к которой
+#  плагин должен прицепиться. Плагин видит это как настоящий сервер:
+#  находит Traefik по имени образа, его сеть, контейнер Element Web и
+#  вставляет кнопку в index.html.
+#
+#  Что НЕ проверяется на этом стенде: реальный вход в E2EE-звонок
+#  (для него нужен настоящий Synapse + LiveKit). Это отдельный сценарий,
+#  см. TESTING.ru.md.
+#
+#  Запуск:
+#     cd testbed
+#     docker compose -f compose.fake.yml up -d
+#     bash smoke.sh
+#     docker compose -f compose.fake.yml down
+# ==========================================================================
+name: fake-element-stack
+
+services:
+  traefik:
+    image: traefik:v3.2
+    container_name: fake-traefik
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --api.dashboard=false
+      # Стенд слушает 8090/8443, чтобы не мешать настоящему Traefik,
+      # если проверка идёт на том же хосте.
+      - --entrypoints.websecure.http.tls=true
+    ports:
+      - "8090:80"
+      - "8443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [fake-edge]
+
+  element-web:
+    image: nginx:1.27-alpine
+    container_name: fake-element-web
+    restart: unless-stopped
+    volumes:
+      - ./fake-web:/usr/share/nginx/html:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.fake-element.rule=Host(`meet.localhost`)"
+      - "traefik.http.routers.fake-element.entrypoints=websecure"
+      - "traefik.http.routers.fake-element.tls=true"
+      - "traefik.http.services.fake-element.loadbalancer.server.port=80"
+    networks: [fake-edge]
+
+networks:
+  fake-edge:
+    name: fake-edge
+    driver: bridge

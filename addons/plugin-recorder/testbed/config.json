@@ -1,0 +1,10 @@
+{
+  "default_server_config": {
+    "m.homeserver": {
+      "base_url": "http://fake-synapse:8008",
+      "server_name": "meet.localhost"
+    }
+  },
+  "brand": "Fake Element",
+  "default_theme": "light"
+}
