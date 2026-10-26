@@ -11,6 +11,8 @@
 ## Что добавляется
 
 * кнопка в Element Web рядом с управлением звонком;
+* <img width="609" height="67" alt="image" src="https://github.com/user-attachments/assets/28b929bb-a6e9-4846-9f2c-db76066cba3e" />
+
 * архив записей на /recordings/ с авторизацией через Matrix;
 * контроллер, портал, публикатор и N воркеров-рекордеров в отдельном
   compose-проекте recording-overlay;
