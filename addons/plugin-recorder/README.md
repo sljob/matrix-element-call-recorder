@@ -11,6 +11,8 @@ break encryption and it is not a built-in Element Call feature.
 ## What it adds
 
 * one button in Element Web, next to the call controls;
+* <img width="511" height="61" alt="image" src="https://github.com/user-attachments/assets/42a34eed-74d7-4a84-898a-f6a8129878c2" />
+
 * a recordings archive at /recordings/ with Matrix-based authorization;
 * one controller, one portal, one publisher and N recorder workers, all in a
   separate compose project named recording-overlay;
