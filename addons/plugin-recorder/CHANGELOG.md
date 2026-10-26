@@ -4,6 +4,39 @@ All notable changes to the E2EE Recorder plugin. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [2.0.1] — Permission split, nginx support
+
+### Added
+
+- **`RECORDINGS_MIN_POWER_LEVEL`** (default `50`). A separate gate for reading
+  the archive, independent from `RECORDING_MIN_POWER_LEVEL` which gates
+  recording. Being allowed to record and being allowed to read the result back
+  are different rights, and the reference monolithic portal already behaved
+  this way; the overlay portal did not.
+- **`RECORDING_MIN_POWER_LEVEL`** is now documented in `answers.example`. It was
+  read by the installer all along (`a.i("RECORDING_MIN_POWER_LEVEL", 50)`) but
+  never listed, so it could not be changed without reading the source.
+- **`nginx.example.conf`** — three locations (API, archive, legacy `/files/`)
+  with the prefix-strip and streaming bits that actually matter.
+- **`PUBLISH_LOOPBACK_PORTS`** (default `true`). Publishes `rec-controller` and
+  `rec-portal` on `127.0.0.1:8765` / `127.0.0.1:8899` so an external reverse
+  proxy can reach them. The installer refuses to start if either port is taken.
+- `minPowerLevel` is written into Element Web's module config, so the button's
+  local pre-check matches what the controller enforces.
+
+### Fixed
+
+- **Archive authorization was membership-only.** `allowed_entries()` read the
+  power level and discarded it (`member, _pl = ...`), and `/files/<rel>` did the
+  same, so any room member could list and download that room's recordings. Both
+  now require `power >= RECORDINGS_MIN_POWER_LEVEL`. A copied link is no longer
+  a capability.
+- **Download links were root-absolute** (`href='/files/...'`), which broke
+  behind any prefix strip — both the Traefik router and the nginx example. They
+  are now relative to the archive page.
+- The `answers.example` header told users to run `./install.sh --answers file`
+  while the CLI takes the file positionally; both forms are now documented.
+
 ## [2.0.0] — Official Element Web Module API (ESM)
 
 ### Changed

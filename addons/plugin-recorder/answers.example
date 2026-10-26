@@ -1,7 +1,11 @@
 # =============================================================================
-# Matrix Element Call Recorder Plugin v2.0 — Answer File
-# Copy to 'answers.env' and edit, then run:
-#   ./install.sh --answers answers.env
+# Matrix Element Call Recorder Plugin v2.0.1 — Answer File
+# Copy to a private path and edit, then run:
+#   cp answers.example /root/answers-plugin.conf
+#   chmod 600 /root/answers-plugin.conf
+#   bash install.sh --check   /root/answers-plugin.conf
+#   bash install.sh --install /root/answers-plugin.conf
+# The answers file is a positional argument; --answers <file> also works.
 # Modes (CLI flag overrides INSTALL_ACTION):
 #   --check      Verify server readiness & missing components (read-only)
 #   --install    Install or upgrade the plugin
@@ -59,6 +63,26 @@ ELEMENT_CALL_INTERNAL_URL="http://127.0.0.1:8090"
 
 # Docker network shared with Traefik and Synapse ("auto" detects from Element Web container)
 DOCKER_ADDONS_NETWORK="auto"
+
+# --- Recording permissions ---------------------------------------------------
+# Minimum room power level that may START and STOP a recording. The room's real
+# m.room.power_levels event is checked by the controller for every request; a
+# role label in the UI means nothing. 50 = room admin, 0 = every member.
+RECORDING_MIN_POWER_LEVEL="50"
+
+# Minimum room power level that may SEE and DOWNLOAD this room's recordings in
+# the archive. Deliberately independent from RECORDING_MIN_POWER_LEVEL: being
+# allowed to record and being allowed to read the result back are separate
+# rights. 50 = room admin only (default, matches the reference implementation),
+# 0 = every room member. Server admins (Synapse admin flag) always see all.
+RECORDINGS_MIN_POWER_LEVEL="50"
+
+# Publish rec-controller:8765 and rec-portal:8899 on 127.0.0.1:CONTROLLER_PORT /
+# 127.0.0.1:REC_HTTP_PORT. Needed only when an external reverse proxy (nginx,
+# Caddy, haproxy) fronts the plugin instead of Traefik labels; see
+# nginx.example.conf. Set "false" to keep both ports entirely unpublished and
+# route only through Traefik.
+PUBLISH_LOOPBACK_PORTS="true"
 
 # --- Recorder bot accounts ----------------------------------------------------
 # Number of recorder bot accounts to provision (1 for single call at a time, >1 for parallel calls)

@@ -36,7 +36,7 @@ import sys
 import time
 import urllib.parse
 
-PLUGIN_VERSION = "2.0.0"
+PLUGIN_VERSION = "2.0.1"
 PROJECT = "recording-overlay"
 MODULE_CONFIG_KEY = "io.github.matrix-element-call-recorder"
 MODULE_REL_ENTRYPOINT = "/modules/recorder/index.js"
@@ -573,6 +573,17 @@ def discover(a):
     ctx["passwords"] = pwds
     ctx["workers"] = workers
     ctx["ports"] = [] if a.b("ADOPT_EXISTING") else pick_ports(a, workers)
+
+    # Ports that only exist when an external reverse proxy is used. Refuse
+    # early instead of letting `docker compose up` fail on a bind conflict.
+    if not a.b("ADOPT_EXISTING") and a.b("PUBLISH_LOOPBACK_PORTS", True):
+        for key, default, label in (("CONTROLLER_PORT", 8765, "rec-controller"),
+                                    ("REC_HTTP_PORT", 8899, "rec-portal")):
+            pnum = a.i(key, default)
+            if port_busy(pnum):
+                die("%s: port %d is already in use on 127.0.0.1. "
+                    "Set %s to a free port, or PUBLISH_LOOPBACK_PORTS=\"false\" "
+                    "if you route through Traefik labels instead." % (label, pnum, key))
     ctx["call_url"] = (a.get("ELEMENT_CALL_URL", "").strip()
                        or ("https://%s" % domain))
     ctx["token"] = a.get("RECORDER_TOKEN", "").strip() or secrets.token_hex(24)
@@ -678,6 +689,10 @@ def build_module_config_dict(a):
         "apiBase": a.get("RECORDING_API_PREFIX", "/recording") or "/recording",
         "recordingsPath": a.get("RECORDINGS_PUBLIC_PATH", "/recordings/") or "/recordings/",
         "lang": a.get("BUTTON_LANG", "auto") or "auto",
+        # Kept in sync with RECORDING_MIN_POWER_LEVEL, which the controller
+        # enforces. Without this the button locally assumed 50 and told a PL40
+        # user "insufficient power" for a deployment that allows PL40.
+        "minPowerLevel": a.i("RECORDING_MIN_POWER_LEVEL", 50),
         "showRecordingsLink": a.b("BUTTON_SHOW_RECORDINGS_LINK",
                                   a.b("SHOW_RECORDINGS_LINK", True)),
         "alwaysVisible": a.b("BUTTON_ALWAYS_VISIBLE", True),
@@ -821,7 +836,7 @@ CONTROLLER = """
     networks: [default]
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    environment:
+{ports_api}    environment:
       RECORDER_URLS: "{urls}"
       RECORDER_TOKEN: "{token}"
       RECORDER_ACCOUNTS: "{accounts}"
@@ -856,11 +871,12 @@ PORTAL = """
     container_name: rec-portal
     restart: unless-stopped
     networks: [default]
-    environment:
+{ports_portal}    environment:
       PUBLIC_DIR: "/public"
       SYNAPSE_URL: "{synapse}"
       DOMAIN: "{domain}"
       INSTALL_LANGUAGE: "{lang}"
+      RECORDINGS_MIN_POWER_LEVEL: "{viewpl}"
       TLS_CA_FILE: "{ca_inside}"
       PLUGIN_VERSION: "{v}"
     volumes:
@@ -1025,6 +1041,17 @@ def render_compose(a, ctx):
     ca_inside = "/ca/ca.crt" if ctx["ca_file"] else ""
     ca_volume = ("      - %s:/ca/ca.crt:ro\n" % ctx["ca_file"]) if ctx["ca_file"] else ""
 
+    # Loopback publishing is only needed when an external reverse proxy (nginx,
+    # Caddy, haproxy) fronts the plugin instead of Traefik labels. Traefik
+    # reaches both services over the docker network and does not need it.
+    # Bound to 127.0.0.1 so it is never exposed to the internet by accident.
+    if a.b("PUBLISH_LOOPBACK_PORTS", True):
+        ports_api = '    ports:\n      - "127.0.0.1:%d:8765"\n' % a.i("CONTROLLER_PORT", 8765)
+        ports_portal = '    ports:\n      - "127.0.0.1:%d:8899"\n' % a.i("REC_HTTP_PORT", 8899)
+    else:
+        ports_api = ""
+        ports_portal = ""
+
     state = os.path.join(a["PLUGIN_DIR"], "state")
     common = dict(
         state=state, root=ROOT, v=PLUGIN_VERSION, network=ctx["network"],
@@ -1032,6 +1059,8 @@ def render_compose(a, ctx):
         plugin=a["PLUGIN_DIR"], recordings_dir=a["RECORDINGS_DIR"],
         p=p, ca_inside=ca_inside, ca_volume=ca_volume,
         tls_api=tls_api, tls_portal=tls_portal,
+        ports_api=ports_api, ports_portal=ports_portal,
+        viewpl=a.i("RECORDINGS_MIN_POWER_LEVEL", 50),
     )
 
     parts = [COMPOSE_HEAD.format(**common)]

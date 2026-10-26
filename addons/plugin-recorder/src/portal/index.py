@@ -34,6 +34,13 @@ LANG = os.environ.get("INSTALL_LANGUAGE", "ru")
 CA = os.environ.get("TLS_CA_FILE", "")
 CACHE_TTL = 120
 
+# Minimum room power level required to SEE and DOWNLOAD this room's recordings.
+# Deliberately separate from RECORDING_MIN_POWER_LEVEL: being allowed to start
+# a recording and being allowed to read it back are different rights, and some
+# deployments do want to grant the first without the second.
+# Default 50 = room admin, matching the reference monolithic implementation.
+VIEW_MIN = int(os.environ.get("RECORDINGS_MIN_POWER_LEVEL", "50"))
+
 app = Flask(__name__)
 SESSION = requests.Session()
 
@@ -199,7 +206,14 @@ def room_id_from_dir(room_dir):
 
 
 def allowed_entries(token, user_id, entries):
-    """Filter entries by room membership. Cached per room within the request."""
+    """Filter entries by room membership AND room power level.
+
+    Membership alone is not enough: a PL0 member can sit in the call but must
+    not necessarily read the recording back. This is the same rule the
+    reference monolithic portal applies (`power >= 50`), except the threshold
+    comes from RECORDINGS_MIN_POWER_LEVEL instead of being hardcoded, and it is
+    independent from the level that may start a recording.
+    """
     admin = is_server_admin(token, user_id)
     decisions = {}
     kept = []
@@ -207,8 +221,8 @@ def allowed_entries(token, user_id, entries):
         rid = room_id_from_dir(e["room_dir"])
         if rid not in decisions:
             decisions[rid] = (True, 999) if admin else room_access(token, user_id, rid)
-        member, _pl = decisions[rid]
-        if member:
+        member, pl = decisions[rid]
+        if member and (admin or pl >= VIEW_MIN):
             kept.append(e)
     return kept
 
@@ -261,9 +275,16 @@ def file(rel):
     room_dir = rel.split("/")[0] if "/" in rel else ""
     rid = room_id_from_dir(room_dir)
     if not is_server_admin(token, user):
-        member, _ = room_access(token, user, rid)
+        member, pl = room_access(token, user, rid)
         if not member:
-            app.logger.warning("denied %s for %s (room %s)", rel, user, rid)
+            app.logger.warning("denied %s for %s (room %s): not a member", rel, user, rid)
+            abort(403)
+        # Symmetric with allowed_entries(): a copied link must not be a
+        # capability. Without this, the index hides a recording and the direct
+        # URL still hands it out.
+        if pl < VIEW_MIN:
+            app.logger.warning("denied %s for %s (room %s): power %d < %d",
+                               rel, user, rid, pl, VIEW_MIN)
             abort(403)
 
     full = os.path.abspath(os.path.join(PUBLIC_DIR, rel))
@@ -331,7 +352,7 @@ def render_index(entries, user):
             "<span class='name'>%s</span>"
             "<span class='meta'>%s</span>"
             "<span class='meta'>%s</span>"
-            "<a class='dl' href='/files/%s'>%s</a></div>"
+            "<a class='dl' href='files/%s'>%s</a></div>"
             % (icon, html.escape(e["name"]), html.escape(when), human(e["bytes"]),
                urllib.parse.quote(e["rel"]), html.escape(t("duration_hint"))))
 
