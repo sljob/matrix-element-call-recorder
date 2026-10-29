@@ -23,6 +23,54 @@ break encryption and it is not a built-in Element Call feature.
   to the host nginx after `nginx -t` passes, or left as a file when nginx runs
   in a container.
 
+## Pre-install checks
+
+`--install` inspects the environment first and stops on blockers instead of
+failing after the build:
+
+```bash
+bash install.sh --check   /root/answers.env   # checks only, exit 2 on blockers
+bash install.sh --install /root/answers.env   # checks, then installs
+```
+
+What is verified is what actually stops a recording from working:
+
+* **bot accounts** — not "the account exists", but whether a real
+  `POST /login` with the answers password succeeds. An account with a
+  different password is a blocker;
+* **ports** — whether 8765/8899/8788+ are taken, and by whom: our own container
+  (handled) or a foreign process (blocker with its pid);
+* **templates** — compose and the nginx snippet are rendered into a scratch
+  directory and parsed: unrendered placeholders, invalid YAML, traefik leftovers;
+* **recorder core** — whether `p63-observer.js` carries every known fix;
+* **nginx** — whether `nginx -t` passes and another block already owns
+  `/recording/`;
+* **answers** — duplicate keys, typos, a `DOMAIN` with a scheme;
+* **resources** — RAM per worker and free disk.
+
+Deliberately overriding blockers is a separate key:
+
+```bash
+FORCE_INSTALL="true" bash install.sh --install /root/answers.env
+```
+
+### Bot account conflict
+
+If the account already exists and its password is unknown, the install stops.
+Resolution:
+
+```bash
+bash tools/resolve-bot-accounts.sh --users recbot1 --inspect
+bash tools/resolve-bot-accounts.sh --users recbot1 --reset 'Password' --set-env /root/answers.env
+bash tools/resolve-bot-accounts.sh --users recbot1 --delete
+```
+
+`--reset` is preferable: it changes only the password and keeps the bot's E2EE
+session. `--delete` erases the device, so the bot rejoins as a new one.
+
+Details: [docs/PREFLIGHT.md](docs/PREFLIGHT.md).
+Clean-snapshot runbook: [docs/INSTALL-SNAPSHOT.ru.md](docs/INSTALL-SNAPSHOT.ru.md).
+
 ## Requirements
 
 * a running Matrix stack with Element Web behind nginx (host binary or

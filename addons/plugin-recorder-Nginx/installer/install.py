@@ -34,9 +34,11 @@ import socket
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.parse
+import urllib.request
 
-PLUGIN_VERSION = "2.1.0"
+PLUGIN_VERSION = "2.2.0"
 PROJECT = "recording-overlay"
 NGINX_PREFIX = "/recording"
 NGINX_PORTAL_PREFIX = "/recordings"
@@ -1323,6 +1325,100 @@ def write_nginx_snippet(a, ctx):
 
 
 # --------------------------------------------------------------------------
+# pre-install conflict detection
+# --------------------------------------------------------------------------
+#
+# The checks live in installer/preflight.py so they can be exercised against
+# fixtures without Docker (see docs/PREFLIGHT.ru.md). This adapter wires them
+# to the live discovery context.
+
+import preflight as _preflight
+
+
+class _TemplateShim(object):
+    """Answers-like view whose PLUGIN_DIR points at a scratch directory.
+
+    Rendering templates during --check must never create directories under
+    the real install path, so the shim redirects the two paths that
+    render_compose() dereferences.
+    """
+
+    def __init__(self, base, plugin_dir, rec_dir):
+        self._base = dict(base)
+        self._base["PLUGIN_DIR"] = plugin_dir
+        self._base["RECORDINGS_DIR"] = rec_dir
+
+    def get(self, key, default=None):
+        return self._base.get(key, default)
+
+    def __getitem__(self, key):
+        return self._base[key]
+
+    def __contains__(self, key):
+        return key in self._base
+
+    def b(self, key, default=False):
+        v = str(self._base.get(key, default)).strip().lower()
+        return v in ("1", "true", "yes", "on")
+
+    def i(self, key, default=0):
+        try:
+            return int(str(self._base.get(key, default)).strip())
+        except (TypeError, ValueError):
+            return default
+
+
+def deep_preflight(a, ctx, answers_path=""):
+    """Run the conflict checks and return the report object."""
+    import tempfile
+    scratch = tempfile.mkdtemp(prefix="recorder-check-")
+    shim = _TemplateShim(a, os.path.join(scratch, "plugin"),
+                         os.path.join(scratch, "public"))
+    os.makedirs(os.path.join(scratch, "plugin", "profile"), exist_ok=True)
+
+    smoke = {
+        "network": ctx.get("network") or "bridge",
+        "element_network": ctx.get("element_network") or ctx.get("network") or "bridge",
+        "proxy_kind": ctx.get("proxy_kind", ""),
+        "proxy_name": ctx.get("proxy_name", ""),
+        "ports": [a.i("RECORDER_BASE_PORT", 8788)],
+        "users": (ctx.get("users") or ["bot"])[:1],
+        "passwords": (ctx.get("passwords") or ["x"])[:1],
+        "token": "preflight",
+        "synapse_url": ctx.get("synapse_url") or "",
+        "call_url": ctx.get("call_url") or "",
+        "workers": ctx.get("workers", 1),
+        "api_prefix": NGINX_PREFIX,
+        # render_compose() dereferences these unconditionally, so the smoke
+        # context has to carry them even when there is no custom CA.
+        "ca_file": "",
+        "certresolver": "",
+    }
+
+    conf_dirs = []
+    if ctx.get("proxy_kind") == "host":
+        conf_dirs.append(host_nginx_confdir())
+    conf_dirs.append("/etc/nginx/conf.d")
+
+    # run() needs both worlds: the live ctx (synapse_url, users, workers) and
+    # the smoke values that make rendering deterministic. Merge, live wins.
+    merged = dict(smoke)
+    merged.update({k: v for k, v in ctx.items() if v not in (None, "")})
+    merged["workers"] = ctx.get("workers", 1)
+    merged["api_prefix"] = NGINX_PREFIX
+
+    return _preflight.run(
+        answers=a, ctx=merged,
+        render_compose=render_compose,
+        render_snippet=render_nginx_snippet,
+        shim=shim, root=ROOT,
+        answers_path=answers_path,
+        example_path=os.path.join(ROOT, "answers.example"),
+        conf_dirs=conf_dirs,
+    )
+
+
+# --------------------------------------------------------------------------
 # actions & phase handlers
 # --------------------------------------------------------------------------
 
@@ -1481,14 +1577,10 @@ def cmd_check(a):
     ctx = discover(a)
     print_plan(a, ctx)
     check_routing_prereqs(a, ctx)
-    if nginx_routes_present(a, ctx):
-        say("ok", "nginx already serves %s" % NGINX_PREFIX)
-    else:
-        say("warn", "nginx does not serve %s yet; --install will generate a snippet"
-            % NGINX_PREFIX)
-    check_accounts(a, ctx)
+    pf = deep_preflight(a, ctx, a.get("_answers_path", ""))
+    pf.report()
     say("ok", tr(a, "check_ok"))
-    return 0
+    return 2 if pf.blocked() else 0
 
 
 def cmd_install(a):
@@ -1496,6 +1588,16 @@ def cmd_install(a):
     ctx = discover(a)
     print_plan(a, ctx)
     check_routing_prereqs(a, ctx)
+
+    pf = deep_preflight(a, ctx, a.get("_answers_path", ""))
+    pf.report()
+    if pf.blocked() and not a.b("FORCE_INSTALL", False):
+        say("err", "установка остановлена проверкой конфликтов")
+        print("  Исправь БЛОКЕРЫ выше и повтори. Осознанный обход:")
+        print("    FORCE_INSTALL=\"true\" bash install.sh --install <answers>")
+        return 3
+    if pf.blocked():
+        say("warn", "FORCE_INSTALL=true: блокеры проигнорированы осознанно")
     check_accounts(a, ctx)
     prepare_dirs(a)
     stage_build_contexts(a, ctx)
@@ -1577,6 +1679,9 @@ def main():
 
     phase = "repair" if args.phase == "reapply-ui" else args.phase
     a = load_answers(args.answers, assume_yes=args.yes)
+    # __path__ is set by load_answers(); the preflight uses it to inspect the
+    # file itself (duplicate / unknown keys), not just the parsed values.
+    a["_answers_path"] = os.path.abspath(a.get("__path__") or args.answers)
 
     handler = {
         "check": cmd_check,

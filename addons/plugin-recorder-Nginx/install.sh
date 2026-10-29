@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==========================================================================
-#  Matrix Element Call Recorder Plugin v2.1.0 (nginx) — Launcher
+#  Matrix Element Call Recorder Plugin v2.2.0 (nginx) — Launcher
 #
 #  Thin wrapper: validates host prerequisites, parses CLI flags or reads
 #  INSTALL_ACTION from the answers file, enforces safe file permissions on

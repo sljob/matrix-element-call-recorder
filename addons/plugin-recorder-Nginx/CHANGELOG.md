@@ -1,5 +1,75 @@
 # Changelog
 
+## 2.2.0 — pre-install conflict detection
+
+Installing used to be optimistic: it verified that things existed, then built.
+On a fresh snapshot that was not enough, because existence is not the same as
+usability. The recorded failure was a bot account that existed with a different
+password — every check was green, the install completed, and the first
+recording died with `M_FORBIDDEN` inside the worker where nothing is logged.
+
+This release moves every such question to before the build.
+
+### Added
+
+- **`installer/preflight.py`** — a standalone conflict-detection module with
+  severity levels (`fatal`, `warn`, `info`, `ok`) and one printable report.
+  Checks are plain functions over data, which makes each one testable against
+  fixtures without Docker.
+- **Real bot login verification.** `POST /_matrix/client/v3/login` is attempted
+  for every bot, so an existing account with an unknown or mismatched password
+  is now a blocker instead of a silent install.
+- **Port conflicts.** Each port is tested for a listener, and the holder is
+  identified: our own `rec-*` container (handled), a foreign container (blocker
+  with its name), or a host process (blocker with name and pid from `ss -lntpH`).
+- **Template smoke-render.** Compose and the nginx snippet are rendered into a
+  scratch directory and parsed. Unrendered `{placeholders}`, invalid YAML,
+  leftover traefik labels, unbalanced braces or missing block markers block the
+  install — these are defects in the installer, and they must not reach disk.
+- **Observer fix audit.** The core is checked for every fix that recording
+  depends on (`REC_USER`, `REC_PASS`, `ROOM_ID`, `OUT_FILE`, `-vsync cfr`,
+  `/tmp/ffprogress.log`, `MAP ` with a space, `virtual_speaker.monitor`). A
+  stale `vendor/` copy is a blocker rather than a runtime failure.
+- **nginx conflict detection.** `nginx -t` runs first, and every existing
+  `*.conf` is scanned for another block that already serves `/recording/` with
+  `proxy_pass`; two locations on one prefix means nginx takes the first one.
+- **Leftover and image inventory.** Containers and images from a previous
+  attempt are listed; stray `rec-*` containers that are not ours are a warning.
+- **Answers file inspection.** Duplicate keys (the last silently wins), unknown
+  keys (typos), `DOMAIN` with a scheme, `PLUGIN_DIR` pointing at a system
+  directory, and `ADOPT_EXISTING` combined with loopback ports.
+- **Resource check.** RAM against `2 GB × workers + 2 GB`, and free disk on `/`
+  and `/var/lib/docker`.
+- **`tools/resolve-bot-accounts.sh`** — inspect, reset the password through the
+  Synapse admin API, or deactivate accounts so the installer recreates them.
+  `--set-env` writes a working password back into the answers file. Reset is
+  the default recommendation because it keeps the bot's device and E2EE session.
+- **`docs/PREFLIGHT.md` / `.ru.md`** — every check, its severity, and the
+  seventeen fixture scenarios.
+- **`docs/INSTALL-SNAPSHOT.ru.md`** — end-to-end runbook for a clean snapshot,
+  including how to get the files there (scp, git clone, archive).
+
+### Changed
+
+- `--check` is now a real gate: it exits `2` when blockers are present.
+- `--install` refuses to proceed on blockers and exits `3`.
+- Obstacles are overridden only by `FORCE_INSTALL="true"`, deliberately not by
+  `--yes`: skipping a blocker has to be a decision, not a side effect of
+  automation.
+- Login probes treat `429` as a warning, never a blocker, so the check cannot
+  manufacture the rate limit it is looking for.
+- Passwords travel through `urllib`, not a quoted `curl` command line, so shell
+  quoting can no longer turn a correct password into a false `M_FORBIDDEN`.
+
+### Verified
+
+- Seventeen preflight scenarios match their expected severity against a fake
+  Synapse that reproduces `M_FORBIDDEN`, plus a live port holder and synthetic
+  answers files.
+- The composer/nignx render test caught a real defect during development: the
+  smoke context was missing `ca_file`, and `render_compose()` dereferences it
+  unconditionally. That is exactly the class of bug the check exists for.
+
 ## 2.1.0 — nginx edition
 
 Forked from the Traefik variant (2.0.1). Routing is generated for nginx; the
@@ -29,8 +99,7 @@ Traefik label provider is no longer used anywhere.
   `whoami()` and `room_power()` but never assigned it, so every
   `POST /api/record/start` raised `NameError` and Flask answered **500**.
   `/health` was unaffected, which made the controller look healthy while the
-  button failed. Declared next to the other environment reads, `.rstrip("/")`
-  included.
+  button failed.
 - **`RECORDER_URLS` pointed at loopback.** Workers run with
   `network_mode: host`, the controller on a bridge network, so
   `http://127.0.0.1:<port>` resolved to the controller itself and
@@ -39,8 +108,11 @@ Traefik label provider is no longer used anywhere.
 - **`/api/record/status` ignored the button's parameter name.** The UI sends
   `roomId`, older clients `room_id`, the legacy controller `room`. All three
   are accepted now.
+- **Worker/observer environment contract.** `server.js` now passes `REC_USER`,
+  `REC_PASS`, `ROOM_ID` and `OUT_FILE`, which is what the observer reads; the
+  previous names never matched, so the observer exited with `ROOM_ID required`.
 
-### Verified before release
+### Verified
 - `render_compose()` produces valid YAML in both single- and dual-network
   configurations (parsed with a YAML loader, not by eye).
 - Controller endpoints exercised against a stub Synapse and a stub worker:

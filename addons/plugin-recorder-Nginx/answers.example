@@ -24,6 +24,13 @@ INSTALLER_LANG="ru"
 # prompt = ask interactively | yes = auto-install | no = abort with report
 INSTALL_MISSING_COMPONENTS="prompt"
 
+# --install runs a conflict check first and stops on blockers (bot password,
+# taken port, stale observer, nginx clash, duplicate answers key).
+# FORCE_INSTALL overrides that. It is deliberately NOT tied to --yes: skipping
+# a blocker has to be a deliberate decision, not a side effect of automation.
+# Only use it when you understand which blocker you are accepting.
+FORCE_INSTALL="false"
+
 # --- Button UI settings (written to Element Web config.json) ------------------
 # Button caption language in Element Web: auto (follow Element UI) | ru | en
 BUTTON_LANG="ru"

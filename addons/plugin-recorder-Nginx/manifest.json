@@ -1,7 +1,7 @@
 {
   "id": "matrix-element-call-recorder-plugin",
   "name": "E2EE Call Recorder",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "nginx edition. Record button for Element Call conferences in the Element Web room header. Loaded as an ESM module through the official Element Web Module API; all requests go to relative paths on the current origin.",
   "license": "AGPL-3.0-only",
   "homepage": "https://github.com/sljob/matrix-element-call-recorder",
