@@ -1,0 +1,16 @@
+{
+  "name": "matrix-element-call-recorder-plugin",
+  "version": "2.1.0",
+  "description": "E2EE Call Recorder button for Element Web via Module API",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "manifest.json",
+    "locales/"
+  ],
+  "peerDependencies": {
+    "@element-hq/element-web-module-api": ">=1.12.0 <3.0.0"
+  }
+}

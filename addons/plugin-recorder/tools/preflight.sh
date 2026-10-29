@@ -286,7 +286,7 @@ cat <<'EOT'
 
   6) Статус после остановки:
        curl -s -H "Authorization: Bearer $TOKEN" \
-         "https://<domain>/recording/api/record/status?roomId=!room:milorada.ru" | jq .state
+         "https://<domain>/recording/api/record/status?roomId=!room:example.org" | jq .state
      recording -> stopping -> processing -> published
 
   Порог просмотра (новое в 2.0.1):
