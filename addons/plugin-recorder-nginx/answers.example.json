@@ -1,0 +1,23 @@
+{
+  "domain": "matrix.example.org",
+  "synapse_url": "http://127.0.0.1:8008",
+  "element_call_url": "http://127.0.0.1:8090",
+  "livekit_internal": "127.0.0.1:7880",
+  "recorder_image": "local/element-e2ee-recorder:v01",
+  "backend_image": "python:3.11-slim-bookworm",
+  "bot_user": "@recorder:matrix.example.org",
+  "bot_password": "CHANGE_ME",
+  "device_id": "NGINXREC001",
+  "profile_dir": "/var/lib/matrix-recorder/profile",
+  "plugin_dir": "/opt/matrix-recorder-nginx",
+  "element_config": "/opt/element/config.json",
+  "nginx_server_config": "/etc/nginx/sites-available/matrix.conf",
+  "chromium_path": "/usr/bin/chromium",
+  "ca_file": "",
+  "spki_hash": "",
+  "host_resolver": "",
+  "worker_port": 8789,
+  "api_port": 8765,
+  "recording_min_power": 50,
+  "recordings_min_power": 50
+}

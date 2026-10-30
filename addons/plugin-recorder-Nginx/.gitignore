@@ -1,44 +1,11 @@
-# --- secrets and runtime state: never commit -----------------------------
-answers*.conf
-!answers.example
-# vendor/ holds the pinned recorder core and MUST be committed: the image
-# build copies vendor/p63-observer.js and fails without it. Only transient
-# download artefacts are ignored.
-vendor/*.SOURCE.tmp
-vendor/*.tmp
+answers.json
+answers.*.local.json
 *.log
-
-# recorder profiles hold the Matrix session and E2EE keys
-profile/
-storageState.json
-**/profile/**
-
-# recordings and publications
-output/
-public/
-*.mp4
-*.mp3
-*.jpg
-!testbed/fake-web/*.jpg
-
-# plugin state
-state/
-backups/
-ca/
-node_modules/
 __pycache__/
 *.pyc
-.DS_Store
-
-# answers files carry bot passwords — never commit a filled one
-answers.env
-answers-plugin-*.conf
-!answers.example
-
-# scratch data
-public/
-output/
+rendered/
+.env
+profile*/
 state/
-profile/
-profile-spk/
-nginx/recorder.conf
+output/
+public/
