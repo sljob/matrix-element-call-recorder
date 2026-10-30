@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/sljob/matrix-element-call-recorder",
+  "commit": "4b2aa7eb421b90beaf917202bc05eea20f8a388b",
+  "files": {
+    "vendor/monolith/entrypoint.sh": "cd41f40c07a9c75a388960a8731a8e5b61e1048e75ecfead998e80a515752d28",
+    "vendor/monolith/p63-observer.js": "22aa1591661ae662ad9d22361811523b91f937eb4850eaf1029dbff9f362ae68"
+  },
+  "policy": "Unmodified source reference. TLS/executable adapter only; login, SDK, E2EE and capture logic retained."
+}

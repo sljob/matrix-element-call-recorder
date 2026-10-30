@@ -1,0 +1,6 @@
+Project: matrix-element-call-recorder — Nginx plugin
+Version: 3.0.0-rc1
+Base monolith commit: 4b2aa7eb421b90beaf917202bc05eea20f8a388b
+Status: release candidate
+Runtime image policy: existing recorder image only; no build/pull by installer
+Privacy: examples use matrix.example.org; no server secrets included
