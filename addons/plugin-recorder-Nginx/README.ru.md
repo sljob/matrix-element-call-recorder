@@ -33,9 +33,43 @@ Nginx-конфигурация: один TLS `server {}` с точным `server
 
 Element config должен быть реальным файлом на хосте, из которого Element читает конфигурацию. Если образ генерирует runtime config отдельно и не читает этот файл, требуется корректно указать авторитетный host config и механизм его обновления. Автоматического поиска и редактирования временных файлов контейнера нет.
 
-## Установка
+Ниже обязательный безопасный preflight. Он не останавливает контейнеры, не меняет Matrix state, не удаляет профили и не редактирует Nginx/Element:
 
-Распакуйте проект в отдельный каталог, не поверх старого плагина. Скопируйте `answers.example.json` в `/root/recorder-nginx.answers.json`, заполните реальные значения и установите `chmod 600`.
+```bash
+chmod +x install.sh tools/*.sh
+./tools/preflight.sh /root/recorder-nginx.answers.json
+```
+
+Preflight проверяет:
+
+- Docker Engine и Compose v2;
+- Nginx и результат `nginx -t`;
+- JSON-конфигурацию Element Web;
+- наличие и свободность loopback-портов;
+- локальное наличие образов без `pull`;
+- внутри recorder image: Node >=20, Python3, Chromium, `puppeteer-core`, FFmpeg/ffprobe, Xvfb, `xdpyinfo`, PulseAudio, `pactl`, `libx264`, `libmp3lame`;
+- корректный вызов `docker run --entrypoint /bin/sh`: `$0=preflight`, `$1=<chromium_path>` — это предотвращает ошибку старого варианта с `/app/check`;
+- конфликтующие старые recorder-контейнеры и занятые профили;
+- дублирование аккаунта бота в работающих контейнерах;
+- оставшиеся compose-файлы монолитного/старого плагина;
+- существующие `/recording/`, `/recordings/` и module routes;
+- неоднозначный или конфликтующий TLS server block Nginx;
+- существующую identity-тройку `bot_user/device_id/profile_dir` при repair.
+
+`WARN` требует ручного решения, но не блокирует установку. `FAIL` блокирует установку. Автоматических `scale 0`, `docker stop`, `docker rm`, удаления аккаунта, сброса пароля или удаления профиля нет.
+
+После успешного preflight установка выполняется отдельно:
+
+```bash
+./install.sh --install /root/recorder-nginx.answers.json
+```
+
+Для repair сначала снова выполните preflight, затем:
+
+```bash
+./install.sh --repair /root/recorder-nginx.answers.json
+```
+
 
 Основные параметры:
 

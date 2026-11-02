@@ -190,8 +190,12 @@ def compose_config(cfg, release, token):
 
 def check(cfg,repair,allow_create=False):
     verify_sources()
-    for tool in ('docker','nginx'): run([tool,'--version'] if tool=='docker' else [tool,'-v'])
-    run(['docker','compose','version'])
+    # Full non-destructive preflight. It catches the failures seen in 2.2.6:
+    # missing image dependencies, occupied ports, stale recorder containers,
+    # duplicate bot/profile usage, invalid Nginx/vhost, and existing routes.
+    from preflight import Preflight
+    Preflight(cfg, run, inspect, inject_nginx).run_all()
+
     if not Path(cfg['element_config']).is_file():raise ValueError('element_config not found')
     json.loads(Path(cfg['element_config']).read_text())
     nginx=Path(cfg['nginx_server_config']);text=nginx.read_text()
