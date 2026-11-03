@@ -1,0 +1,20 @@
+#!/bin/bash
+set -euo pipefail
+mkdir -p /tmp/pulse /out /public /work/profile-spk
+# Only process locks; never remove Chromium data, IndexedDB or E2EE databases.
+rm -f /tmp/.X99-lock /tmp/.X11-unix/X99 /tmp/pulse/native
+rm -f /work/profile-spk/SingletonLock /work/profile-spk/SingletonSocket /work/profile-spk/SingletonCookie
+export DISPLAY=:99 PULSE_SERVER=unix:/tmp/pulse/native
+Xvfb :99 -screen 0 1280x720x24 -nolisten tcp &
+for i in $(seq 1 30); do
+  xdpyinfo -display :99 >/dev/null 2>&1 && break
+  sleep 1
+done
+xdpyinfo -display :99 >/dev/null
+pulseaudio --exit-idle-time=-1 --disallow-exit -n \
+  --load="module-native-protocol-unix socket=/tmp/pulse/native" \
+  --load="module-null-sink sink_name=recsink" \
+  --load=module-always-sink --daemonize=yes --log-target=stderr
+pactl info >/dev/null
+pactl list sinks short | grep -w recsink
+exec node /plugin/worker.mjs

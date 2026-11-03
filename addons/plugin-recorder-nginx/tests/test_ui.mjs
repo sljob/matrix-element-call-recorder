@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import Module from '../ui/index.js';
+let callback;
+globalThis.window={location:{origin:'https://matrix.example.org'},mxMatrixClientPeg:{get:()=>({getAccessToken:()=> 'test-token'})}};
+const api={config:{get:()=>({lang:'ru'})},extras:{addRoomHeaderButtonCallback:cb=>{callback=cb;}}};
+const module=new Module(api);
+await module.load();
+assert.equal(typeof callback,'function');
+const store=module.storeFor('!r:example.org');
+let state='idle';
+globalThis.fetch=async(url,options)=>{
+  assert.ok(String(url).startsWith('https://matrix.example.org/recording/'));
+  assert.equal(options.headers.Authorization,'Bearer test-token');
+  return {ok:true,status:200,text:async()=>JSON.stringify({state})};
+};
+await store.sync();assert.equal(store.canStart(),true);
+state='starting';await store.sync();assert.equal(store.canStop(),true);
+state='recording';await store.sync();assert.equal(store.canStop(),true);
+state='finalized';await store.sync();assert.equal(store.canStart(),true);
+state='error';await store.sync();assert.equal(store.canStart(),true);
+console.log('OK Element module registration and status transitions (mocked host/fetch)');

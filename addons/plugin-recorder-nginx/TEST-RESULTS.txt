@@ -1,0 +1,72 @@
+OK provenance, Python/JS/Bash syntax
+test_check_uses_one_probe_not_two_and_logs_out_temporary_bot (test_preflight.PreflightTests.test_check_uses_one_probe_not_two_and_logs_out_temporary_bot) ... ok
+test_different_homeserver_same_localpart_is_not_duplicate (test_preflight.PreflightTests.test_different_homeserver_same_localpart_is_not_duplicate) ... ok
+test_image_probe_shell_arguments_and_workdir (test_preflight.PreflightTests.test_image_probe_shell_arguments_and_workdir) ... ok
+test_missing_nginx_is_report_not_traceback (test_preflight.PreflightTests.test_missing_nginx_is_report_not_traceback) ... ok
+test_no_path_docker_wrapper_used (test_preflight.PreflightTests.test_no_path_docker_wrapper_used) ... ok
+test_occupied_foreign_port_is_fatal (test_preflight.PreflightTests.test_occupied_foreign_port_is_fatal) ... ok
+test_own_repair_container_not_duplicate (test_preflight.PreflightTests.test_own_repair_container_not_duplicate) ... ok
+test_pool_workers_json_duplicate_is_fatal (test_preflight.PreflightTests.test_pool_workers_json_duplicate_is_fatal) ... ok
+test_positive_real_cli_all_entrypoints (test_preflight.PreflightTests.test_positive_real_cli_all_entrypoints) ... ok
+test_probe_failure_stage_is_visible_no_secret (test_preflight.PreflightTests.test_probe_failure_stage_is_visible_no_secret) ... ok
+test_real_entrypoint_missing_config_fails_not_false_success (test_preflight.PreflightTests.test_real_entrypoint_missing_config_fails_not_false_success) ... ok
+test_repair_port_requires_matching_process_id (test_preflight.PreflightTests.test_repair_port_requires_matching_process_id) ... ok
+test_running_duplicate_bot_is_fatal (test_preflight.PreflightTests.test_running_duplicate_bot_is_fatal) ... ok
+test_same_project_without_provenance_not_exempt (test_preflight.PreflightTests.test_same_project_without_provenance_not_exempt) ... ok
+test_archive_file_range_and_denial (test_project.APITests.test_archive_file_range_and_denial) ... ok
+test_cross_origin_denial (test_project.APITests.test_cross_origin_denial) ... ok
+test_membership_denial (test_project.APITests.test_membership_denial) ... ok
+test_power_denial (test_project.APITests.test_power_denial) ... ok
+test_start_status_stop_persistent_owner (test_project.APITests.test_start_status_stop_persistent_owner) ... ok
+test_compose_contract (test_project.InstallerTests.test_compose_contract) ... ok
+test_compose_real_schema (test_project.InstallerTests.test_compose_real_schema) ... ok
+test_dedicated_paths_required (test_project.InstallerTests.test_dedicated_paths_required) ... ok
+test_nginx_conflict (test_project.InstallerTests.test_nginx_conflict) ... ok
+test_nginx_insert_idempotent (test_project.InstallerTests.test_nginx_insert_idempotent) ... ok
+test_nginx_real_syntax (test_project.InstallerTests.test_nginx_real_syntax) ... ok
+test_provenance_and_observer (test_project.InstallerTests.test_provenance_and_observer) ... ok
+test_actual_fragmented_mp4_audio_poster_idempotence (test_project.PublisherTests.test_actual_fragmented_mp4_audio_poster_idempotence) ... ok
+test_failed_reload_rolls_back_existing_configuration (test_transaction.TransactionTests.test_failed_reload_rolls_back_existing_configuration) ... Nginx rollback check failed; backup: /tmp/tmp72ec62g8/plugin/backups/20261102-150232-371918
+ok
+test_install_repair_preserves_identity_and_profile (test_transaction.TransactionTests.test_install_repair_preserves_identity_and_profile) ... ok
+test_actual_node_worker_start_stop_publish_restart (test_worker.WorkerLifecycleTests.test_actual_node_worker_start_stop_publish_restart) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 6.700s
+
+OK
+[ OK ] HOST-python3 python3 available
+[ OK ] HOST-nginx nginx available
+[ OK ] HOST-openssl openssl available
+[ OK ] DOCKER-DAEMON Docker daemon accessible
+[ OK ] COMPOSE Compose v2 available
+[ OK ] FILE-element_config Configured file exists
+[ OK ] FILE-nginx_server_config Configured file exists
+[ OK ] ELEMENT-JSON Element object and modules list valid
+[ OK ] TLS CA and SPKI input syntax valid (not a live Chromium TLS test)
+[ OK ] NGINX-CONFIG nginx -t passed
+[ OK ] NGINX-VHOST Target TLS server and locations compatible
+[ OK ] PORT-8789 Loopback port free
+[ OK ] PORT-8765 Loopback port free
+[ OK ] IMAGE Local image found: local/element-e2ee-recorder:v01
+[ OK ] IMAGE Local image found: python:3.11-slim-bookworm
+[ OK ] RECORDER-DEPS Real image tools, versions, FFmpeg capabilities and /app ESM import passed
+[ OK ] BACKEND-DEPS Backend Python >=3.11 and stdlib dependencies passed
+[WARN] PROFILE-NEW New persistent Chromium profile will be created
+        Do not reuse a device ID with a different existing crypto database.
+OK bot login (temporary device logged out); permanent device unchanged
+OK configuration, source checksums, Nginx syntax, dependencies, identity and ports
+Installed 3.0.0-rc2 backup: /tmp/tmpuuwq2a7m/plugin/backups/20261102-150232-375740
+Matrix bot login verified in preflight; no power levels modified.
+Reload Element. End-to-end camera/audio recording must be checked before production acceptance.
+Installed 3.0.0-rc2 backup: /tmp/tmpuuwq2a7m/plugin/backups/20261102-150232-377866
+Matrix bot login verified in preflight; no power levels modified.
+Reload Element. End-to-end camera/audio recording must be checked before production acceptance.
+[plugin-recorder-nginx-v3] loaded {
+  origin: 'https://matrix.example.org',
+  apiBase: '/recording',
+  recordings: '/recordings/',
+  lang: 'ru',
+  alwaysVisible: true
+}
+OK Element module registration and status transitions (mocked host/fetch)
