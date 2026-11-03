@@ -22,7 +22,7 @@ function save() {
 }
 try {
   job = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
-  if (job && ['starting','recording','stopping'].includes(job.state)) {
+  if (job && ['starting','recording','stopping','processing'].includes(job.state)) {
     job.state = 'error'; job.error = 'worker restarted before finalization'; save();
   }
 } catch (e) { if (e.code !== 'ENOENT') throw e; }
@@ -45,7 +45,7 @@ async function recoverPublications() {
     const source = path.join(OUT, f.slice(0, -5));
     try { await exec('python3', [publisher, source], {timeout:1800000});
       if(job?.file === source) {job.state='finalized';delete job.error;save();} }
-    catch { console.error('[publish] pending:', path.basename(source)); }
+    catch { console.error('[publish] pending:', path.basename(source)); if(job?.file===source){job.state='error';job.error='publication pending; source retained';save();} }
   }
 }
 await recoverPublications();
@@ -75,7 +75,7 @@ const server = http.createServer(async(req,res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
     if (url.pathname === '/health' && req.method === 'GET') {
-      return reply(res,200,{ok:true,busy:busy(),state:job?.state || 'idle'});
+      return reply(res,200,{ok:true,service:'matrix-recorder-nginx-worker',pid:process.pid,busy:busy(),state:job?.state || 'idle'});
     }
     if (!auth(req)) return reply(res,403,{error:'worker authentication failed'});
     if (url.pathname === '/status' && req.method === 'GET') {

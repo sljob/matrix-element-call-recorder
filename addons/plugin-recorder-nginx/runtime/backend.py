@@ -203,7 +203,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.command == 'POST': self.check_origin()
         if url.path == '/health':
             state = worker('/health')
-            return self.send(200 if state.get('ok') else 503, {'ok':state.get('ok', False), 'worker':state})
+            return self.send(200 if state.get('ok') else 503, {'ok':state.get('ok', False), 'service':'matrix-recorder-nginx-backend', 'pid':os.getpid(), 'worker':state})
         if url.path == '/recordings/login' and self.command == 'POST':
             values = urllib.parse.parse_qs(self.read_body())
             login = remote(HS + '/_matrix/client/v3/login', 'POST', {

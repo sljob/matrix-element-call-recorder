@@ -113,12 +113,20 @@ class PreflightTests(unittest.TestCase):
             def __init__(self,data):self.data=data
             def __enter__(self):return self
             def __exit__(self,*a):pass
-            def read(self):return json.dumps(self.data).encode()
+            def read(self,*args):return json.dumps(self.data).encode()
         def urlopen(req,**kw):
-            http_calls.append(req.full_url)
-            if req.full_url.endswith('/login'):return Response({'user_id':self.cfg['bot_user'],'access_token':'temporary-secret'})
+            url=req if isinstance(req,str) else req.full_url
+            http_calls.append(url)
+            if url.endswith('/_matrix/client/versions'):return Response({'versions':['v1.11']})
+            if url.endswith('/config.json'):return Response({'default_server_config':{}})
+            if url.endswith('/login'):return Response({'user_id':self.cfg['bot_user'],'access_token':'temporary-secret'})
+            if url.endswith('/'):return type('Html',(),{'__enter__':lambda s:s,'__exit__':lambda *a:None,'read':lambda *a:b'<html>call</html>'})()
             return Response({})
-        with patch.object(I,'run',side_effect=run),patch.object(I.urllib.request,'urlopen',side_effect=urlopen),patch('shutil.which',side_effect=lambda x:'/usr/bin/'+x):
+        original_run=run
+        def run(args,**kwargs):
+            if args==['nginx','-T']:return '# configuration file '+self.cfg['nginx_server_config']+':'+chr(10)+Path(self.cfg['nginx_server_config']).read_text()
+            return original_run(args,**kwargs)
+        with patch.object(P.socket,'create_connection'),patch.object(I,'run',side_effect=run),patch.object(I.urllib.request,'urlopen',side_effect=urlopen),patch('shutil.which',side_effect=lambda x:'/usr/bin/'+x):
             I.check(self.cfg,False)
         probes=[c for c in calls if c[:2]==['docker','run'] and '/bin/bash' in c]
         self.assertEqual(len(probes),1)
@@ -138,6 +146,12 @@ class PreflightTests(unittest.TestCase):
         from http.server import BaseHTTPRequestHandler,HTTPServer
         class Handler(BaseHTTPRequestHandler):
             def log_message(self,*a):pass
+            def do_GET(handler):
+                path=handler.path
+                if path.endswith('/versions'):raw=json.dumps({'versions':['v1.11']}).encode()
+                elif path.endswith('/config.json'):raw=json.dumps({'default_server_config':{}}).encode()
+                else:raw=b'<html>Element Call</html>'
+                handler.send_response(200);handler.end_headers();handler.wfile.write(raw)
             def do_POST(handler):
                 data=json.loads(handler.rfile.read(int(handler.headers.get('Content-Length',0))))
                 if handler.path.endswith('/login'):
@@ -156,8 +170,8 @@ class PreflightTests(unittest.TestCase):
             '*) echo available;;'+chr(10)+'esac'+chr(10))
         docker.chmod(0o755)
         for name in ('nginx','openssl'):
-            binary=bins/name;binary.write_text('#!/bin/sh'+chr(10)+'exit 0'+chr(10));binary.chmod(0o755)
-        self.cfg.update(docker_binary=str(docker),synapse_url='http://127.0.0.1:'+str(server.server_port))
+            binary=bins/name;binary.write_text('#!/bin/sh'+chr(10)+(('if [ "$1" = "-T" ]; then echo "# configuration file '+self.cfg['nginx_server_config']+':"; cat '+self.cfg['nginx_server_config']+'; fi'+chr(10)) if name=='nginx' else '')+'exit 0'+chr(10));binary.chmod(0o755)
+        self.cfg.update(docker_binary=str(docker),synapse_url='http://127.0.0.1:'+str(server.server_port),element_call_url='http://127.0.0.1:'+str(server.server_port),livekit_internal='127.0.0.1:'+str(server.server_port))
         answers=self.root/'answers.json';answers.write_text(json.dumps(self.cfg))
         env=dict(os.environ,PATH=str(bins)+os.pathsep+os.environ['PATH'])
         try:

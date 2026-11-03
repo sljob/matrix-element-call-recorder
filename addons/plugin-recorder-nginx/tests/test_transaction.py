@@ -27,7 +27,7 @@ class TransactionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             cfg,element,nginx=self.fixture(d)
             profile=Path(cfg['profile_dir']);profile.mkdir();(profile/'important-key').write_bytes(b'keep')
-            with patch.object(I,'check'),patch.object(I,'run',return_value=''),patch.object(I.urllib.request,'urlopen',return_value=Response()):
+            with patch.object(I,'check'),patch.object(I,'verify_deployment'),patch.object(I,'run',return_value=''),patch.object(I.urllib.request,'urlopen',return_value=Response()):
                 I.install(cfg,False)
                 first=json.loads((Path(cfg['plugin_dir'])/'compose.json').read_text())
                 token=first['services']['worker']['environment']['RECORDER_TOKEN']
@@ -47,7 +47,7 @@ class TransactionTests(unittest.TestCase):
             def run(args,**kwargs):
                 if args==['nginx','-s','reload']:raise RuntimeError('simulated reload failure')
                 return ''
-            with patch.object(I,'check'),patch.object(I,'run',side_effect=run),patch.object(I.urllib.request,'urlopen',return_value=Response()):
+            with patch.object(I,'check'),patch.object(I,'verify_deployment'),patch.object(I,'run',side_effect=run),patch.object(I.urllib.request,'urlopen',return_value=Response()):
                 with self.assertRaises(RuntimeError):I.install(cfg,False)
             self.assertEqual(element.read_bytes(),old_element)
             self.assertEqual(nginx.read_bytes(),old_nginx)

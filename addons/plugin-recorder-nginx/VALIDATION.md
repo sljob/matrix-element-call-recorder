@@ -1,9 +1,8 @@
-# RC2 validation
+# RC3 validation
 
-Input: user-supplied RC1 archive; fixes implemented in this release tree, not on the user server.
-
-Run `sudo env PYTHONDONTWRITEBYTECODE=1 bash tools/verify.sh`. 30 Python tests and Node UI test passed in this environment. Real FFmpeg media fixtures, real nginx -t, Compose schema, HTTP Range, worker lifecycle, installer file transactions and provenance checks run.
-
-New regression coverage: missing inspect regression through check(), single dependency probe, /app ESM workdir and shell args, missing vhost report, POOL_WORKERS bot conflicts, full MXID comparisons, own repair recognition and PID ownership, safe command diagnostics, direct preflight CLI plus shell/installer entrypoints from another directory. Positive CLI tests use fake external Docker/Nginx executables and a local test Matrix login server; they are NOT live Docker tests. Tests that require root must not be silently reported as passed when skipped.
-
-Live Docker image execution, user-server install/repair and real E2EE camera/audio acceptance are NOT verified here. RC2 fixes demonstrated installer failures; it is not a production certification.
+40 Python tests passed with root privileges, no skips; Node UI contract test passed.
+Real Nginx process: HTTPS GET exact ui/index.js bytes and Element config, non-root worker file access.
+Regression: umask 077 release permissions, comments/quotes/variables/nested Nginx blocks, inactive and duplicate vhosts, incorrect endpoints/mock health, deployment rollback.
+Real FFmpeg fragmented MP4 publication and Node worker lifecycle tests passed. Matrix authorization uses test doubles; CLI preflight fixture uses explicit fake tools.
+Docker Compose config schema validated; actual Docker containers and real Matrix E2EE call NOT executed.
+This is a corrected release candidate, NOT production or real-camera certification. Read START-HERE.ru.md.

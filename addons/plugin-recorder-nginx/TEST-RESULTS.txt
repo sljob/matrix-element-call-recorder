@@ -26,13 +26,23 @@ test_nginx_insert_idempotent (test_project.InstallerTests.test_nginx_insert_idem
 test_nginx_real_syntax (test_project.InstallerTests.test_nginx_real_syntax) ... ok
 test_provenance_and_observer (test_project.InstallerTests.test_provenance_and_observer) ... ok
 test_actual_fragmented_mp4_audio_poster_idempotence (test_project.PublisherTests.test_actual_fragmented_mp4_audio_poster_idempotence) ... ok
-test_failed_reload_rolls_back_existing_configuration (test_transaction.TransactionTests.test_failed_reload_rolls_back_existing_configuration) ... Nginx rollback check failed; backup: /tmp/tmp72ec62g8/plugin/backups/20261102-150232-371918
+test_incorrect_module_bytes_cannot_be_success (test_rc3.DeploymentChecks.test_incorrect_module_bytes_cannot_be_success) ... ok
+test_mock_health_cannot_be_success (test_rc3.DeploymentChecks.test_mock_health_cannot_be_success) ... ok
+test_real_module_get_and_real_served_element_config (test_rc3.LiveNginxTests.test_real_module_get_and_real_served_element_config) ... ok
+test_deployment_probe_failure_rolls_back (test_rc3.StructuralTests.test_deployment_probe_failure_rolls_back) ... ok
+test_different_federation_port_not_duplicate (test_rc3.StructuralTests.test_different_federation_port_not_duplicate) ... ok
+test_endpoint_mocks_fail_closed (test_rc3.StructuralTests.test_endpoint_mocks_fail_closed) ... ok
+test_inactive_and_duplicate_vhost_rejected (test_rc3.StructuralTests.test_inactive_and_duplicate_vhost_rejected) ... ok
+test_inline_comments_quotes_variables_nested_scopes (test_rc3.StructuralTests.test_inline_comments_quotes_variables_nested_scopes) ... ok
+test_malformed_and_duplicate_rejected (test_rc3.StructuralTests.test_malformed_and_duplicate_rejected) ... ok
+test_release_world_traversable_under_real_umask (test_rc3.StructuralTests.test_release_world_traversable_under_real_umask) ... ok
+test_failed_reload_rolls_back_existing_configuration (test_transaction.TransactionTests.test_failed_reload_rolls_back_existing_configuration) ... Nginx rollback check failed; backup: /tmp/tmp0hehbpfn/plugin/backups/20261103-114359-552675
 ok
 test_install_repair_preserves_identity_and_profile (test_transaction.TransactionTests.test_install_repair_preserves_identity_and_profile) ... ok
 test_actual_node_worker_start_stop_publish_restart (test_worker.WorkerLifecycleTests.test_actual_node_worker_start_stop_publish_restart) ... ok
 
 ----------------------------------------------------------------------
-Ran 30 tests in 6.700s
+Ran 40 tests in 7.033s
 
 OK
 [ OK ] HOST-python3 python3 available
@@ -46,20 +56,27 @@ OK
 [ OK ] TLS CA and SPKI input syntax valid (not a live Chromium TLS test)
 [ OK ] NGINX-CONFIG nginx -t passed
 [ OK ] NGINX-VHOST Target TLS server and locations compatible
+[ OK ] NGINX-ACTIVE Configured TLS vhost is loaded and unambiguous
 [ OK ] PORT-8789 Loopback port free
 [ OK ] PORT-8765 Loopback port free
 [ OK ] IMAGE Local image found: local/element-e2ee-recorder:v01
 [ OK ] IMAGE Local image found: python:3.11-slim-bookworm
 [ OK ] RECORDER-DEPS Real image tools, versions, FFmpeg capabilities and /app ESM import passed
 [ OK ] BACKEND-DEPS Backend Python >=3.11 and stdlib dependencies passed
+[ OK ] SYNAPSE-ENDPOINT Actual Matrix versions endpoint reachable
+[ OK ] CALL-ENDPOINT Call HTML and JSON configuration reachable (not an A/V test)
+[ OK ] LIVEKIT-ENDPOINT Configured LiveKit TCP endpoint reachable (not an ICE/E2EE test)
 [WARN] PROFILE-NEW New persistent Chromium profile will be created
         Do not reuse a device ID with a different existing crypto database.
 OK bot login (temporary device logged out); permanent device unchanged
 OK configuration, source checksums, Nginx syntax, dependencies, identity and ports
-Installed 3.0.0-rc2 backup: /tmp/tmpuuwq2a7m/plugin/backups/20261102-150232-375740
+Installed 3.0.0-rc3 backup: /tmp/tmpns2_2fe_/plugin/backups/20261103-114359-548967
 Matrix bot login verified in preflight; no power levels modified.
 Reload Element. End-to-end camera/audio recording must be checked before production acceptance.
-Installed 3.0.0-rc2 backup: /tmp/tmpuuwq2a7m/plugin/backups/20261102-150232-377866
+Installed 3.0.0-rc3 backup: /tmp/tmpk8ebfgoh/plugin/backups/20261103-114359-557373
+Matrix bot login verified in preflight; no power levels modified.
+Reload Element. End-to-end camera/audio recording must be checked before production acceptance.
+Installed 3.0.0-rc3 backup: /tmp/tmpk8ebfgoh/plugin/backups/20261103-114359-559674
 Matrix bot login verified in preflight; no power levels modified.
 Reload Element. End-to-end camera/audio recording must be checked before production acceptance.
 [plugin-recorder-nginx-v3] loaded {

@@ -20,7 +20,7 @@ import urllib.error
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '3.0.0-rc2'
+VERSION = '3.0.0-rc3'
 DOCKER_BINARY = '/usr/bin/docker'
 
 
@@ -37,7 +37,7 @@ def run(args, timeout=120):
     if args and args[0]=='docker':args[0]=DOCKER_BINARY
     p=subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout)
     if p.returncode:raise CommandError(args,p)
-    return p.stdout
+    return p.stdout + (p.stderr if args[:2]==['nginx','-T'] else '')
 
 
 def read_config(path):
@@ -128,43 +128,35 @@ location /modules/recorder-nginx/ {{
 '''
 
 
+# Importable via CLI and importlib-based tests without relying on cwd.
+import importlib.util as _util
+_spec=_util.spec_from_file_location('recorder_nginx_config',ROOT/'installer/nginx_config.py')
+_nginx=_util.module_from_spec(_spec);_spec.loader.exec_module(_nginx)
 def inject_nginx(text,domain,snippet):
-    marker='# BEGIN MATRIX RECORDER NGINX'
-    if marker in text:
-        text=re.sub(r'\n[ \t]*# BEGIN MATRIX RECORDER NGINX\n.*?^[ \t]*# END MATRIX RECORDER NGINX\n?', '', text, flags=re.S | re.M)
-    # Explicit server-name matching and brace tracking. Reject ambiguity.
-    tokens=[]
-    quote=None;escaped=False;comment=False;stack=[];servers=[]
-    for i,char in enumerate(text):
-        if comment:
-            if char=='\n': comment=False
-            continue
-        if quote:
-            if escaped: escaped=False
-            elif char=='\\': escaped=True
-            elif char==quote: quote=None
-            continue
-        if char=='#': comment=True;continue
-        if char in ('"',"'"): quote=char;continue
-        if char=='{':
-            prefix=text[max(0,i-80):i]
-            stack.append((i,bool(re.search(r'\bserver\s*$',prefix))))
-        if char=='}':
-            if not stack: raise ValueError('Unbalanced nginx braces')
-            start,is_server=stack.pop()
-            if is_server:
-                block=text[start:i]
-                # Server names in nested contexts are invalid nginx anyway; nginx -t follows.
-                names=re.findall(r'\bserver_name\s+([^;]+);',re.sub(r'#[^\n]*','',block))
-                if any(domain in n.split() for n in names) and re.search(r'\blisten\s+[^;]*\bssl\b',block):
-                    servers.append(i)
-    if len(servers)!=1: raise ValueError('Expected one TLS server with exact server_name '+domain)
-    index=servers[0]
-    for location in ('/recording','/recordings','/modules/recorder-nginx'):
-        if re.search(r'location\s+(?:[=~^*]+\s+)?'+re.escape(location)+r'(?:/|\s|\{)',text):
-            raise ValueError('Existing conflicting Nginx location '+location)
-    insert='\n    '+marker+'\n    include '+str(snippet)+';\n    # END MATRIX RECORDER NGINX\n'
-    return text[:index]+insert+text[index:]
+    return _nginx.inject(text,domain,snippet)
+
+def verify_deployment(cfg, release):
+    """No success on a mock API, wrong vhost, stale module or unserved config."""
+    context=ssl.create_default_context(cafile=cfg.get('ca_file') or None)
+    base='https://'+cfg['domain']
+    def get(path,headers=None):
+        request=urllib.request.Request(base+path,headers=headers or {})
+        with urllib.request.urlopen(request,context=context,timeout=15) as response:
+            return response.read()
+    expected=(release/'ui/index.js').read_bytes()
+    if get('/modules/recorder-nginx/index.js')!=expected:
+        raise ValueError('Live Nginx module differs from installed ui/index.js; wrong vhost, alias, permissions or cache')
+    config=json.loads(get('/config.json'))
+    if '/modules/recorder-nginx/index.js' not in config.get('modules',[]):
+        raise ValueError('Live Element /config.json does not contain the module; element_config is not authoritative')
+    worker=json.loads(urllib.request.urlopen('http://127.0.0.1:'+str(cfg['worker_port'])+'/health',timeout=10).read())
+    health=json.loads(get('/recording/health'))
+    if health.get('service')!='matrix-recorder-nginx-backend' or worker.get('service')!='matrix-recorder-nginx-worker':
+        raise ValueError('Unexpected worker/backend identity: refuse mock or unrelated services')
+    if not health.get('ok') or not health.get('worker',{}).get('ok'):
+        raise ValueError('Worker/backend not ready')
+    # TLS verification is mandatory. This is route/runtime readiness, NOT an E2EE media test.
+    print('OK live HTTPS module bytes, Element config and recorder backend/worker identity')
 
 
 def compose_config(cfg, release, token):
@@ -253,7 +245,7 @@ def install(cfg,repair):
     for index,(path,data) in enumerate(snapshots.items()):
         if data is not None:(backup/str(index)).write_bytes(data)
     (backup/'paths.json').write_text(json.dumps([str(p) for p in snapshots]))
-    release=root/'releases'/stamp;release.mkdir(mode=0o755)
+    release=root/'releases'/stamp;release.mkdir(mode=0o755);release.chmod(0o755)
     shutil.copytree(ROOT/'runtime',release/'runtime');shutil.copytree(ROOT/'ui',release/'ui')
     (release/'observer.nginx.mjs').write_text(adapt_observer(cfg))
     # Nginx traverses these directories to serve JS; secrets are stored elsewhere.
@@ -288,6 +280,7 @@ def install(cfg,repair):
         (root/'nginx/recorder.conf').write_text(nginx_snippet(cfg))
         nginx.write_text(inject_nginx(nginx.read_text(),cfg['domain'],root/'nginx/recorder.conf'))
         run(['nginx','-t']);run(['nginx','-s','reload'])
+        verify_deployment(cfg,release)
         (root/'identity.json').write_text(json.dumps({k:cfg[k] for k in ('bot_user','device_id','profile_dir')}));(root/'identity.json').chmod(0o600)
         print('Installed',VERSION,'backup:',backup)
         print('Matrix bot login verified in preflight; no power levels modified.')

@@ -64,8 +64,8 @@ class InstallerTests(unittest.TestCase):
             p=Path(d);(p/'ui').mkdir()
             cfg=dict(self.cfg,plugin_dir=d)
             snippet=p/'recorder.conf';snippet.write_text(I.nginx_snippet(cfg))
-            text='server { listen 127.0.0.1:19443 ssl; server_name matrix.example.org; ssl_certificate '+d+'/cert.pem; ssl_certificate_key '+d+'/key.pem; }'
-            text=I.inject_nginx(text,cfg['domain'],snippet)
+            text='server { listen 443 ssl; server_name matrix.example.org; ssl_certificate '+d+'/cert.pem; ssl_certificate_key '+d+'/key.pem; }'
+            text=I.inject_nginx(text,cfg['domain'],snippet).replace('listen 443 ssl;','listen 127.0.0.1:19443 ssl;')
             subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout',d+'/key.pem','-out',d+'/cert.pem','-subj','/CN=matrix.example.org','-days','1'],check=True,capture_output=True)
             main=p/'nginx.conf';main.write_text('pid '+d+'/nginx.pid; error_log '+d+'/error.log; events {} http { client_body_temp_path '+d+'/body; proxy_temp_path '+d+'/proxy; fastcgi_temp_path '+d+'/fastcgi; uwsgi_temp_path '+d+'/uwsgi; scgi_temp_path '+d+'/scgi; access_log off; '+text+' }')
             r=subprocess.run([str(nginx),'-t','-p',d,'-c',str(main)],capture_output=True,text=True)

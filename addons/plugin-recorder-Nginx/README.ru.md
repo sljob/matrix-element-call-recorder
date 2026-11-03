@@ -1,8 +1,10 @@
-# Matrix Element Call Recorder — Nginx plugin 3.0.0-rc2
+# Matrix Element Call Recorder — Nginx plugin 3.0.0-rc3
 
 Самостоятельный плагин для **уже работающего** Matrix / Synapse / Element Web / Element Call / LiveKit с **Nginx на хосте**. Установщик не разворачивает заново Synapse, БД, TLS и LiveKit и не преобразует Traefik в Nginx.
 
 **Статус: release candidate.** Локальные интеграционные проверки выполнены; реальный E2EE-звонок и установка Docker Compose на чистом сервере ещё не проверены. Не выдаётся за production-релиз. Эта сборка не должна автоматически заменять действующий тестовый стек с Traefik.
+
+**RC3: сначала прочитайте START-HERE.ru.md и CHANGELOG-RC3.ru.md. Старые серверные fix-скрипты не использовать.**
 
 ## Основа
 

@@ -7,6 +7,8 @@ import shutil
 import socket
 import ssl
 import sys
+import urllib.request
+import urllib.parse
 
 RECORDER_PROBE = r'''set -eu
 stage=bootstrap
@@ -126,6 +128,40 @@ class Preflight:
         if not p.is_file():return
         try:self.inject_nginx(p.read_text(),self.cfg['domain'],Path(self.cfg['plugin_dir'])/'nginx/recorder.conf');self.good('NGINX-VHOST','Target TLS server and locations compatible')
         except (ValueError,OSError) as e:self.error('NGINX-VHOST',str(e),'Select the authoritative TLS server file; remove obsolete recorder locations only after backup.')
+        if shutil.which('nginx'):
+            try:
+                import importlib.util
+                spec=importlib.util.spec_from_file_location('preflight_nginx_parser',Path(__file__).with_name('nginx_config.py'))
+                parser=importlib.util.module_from_spec(spec);spec.loader.exec_module(parser)
+                dump=self.run(['nginx','-T'])
+                if re.search(r'conflicting server name',dump,re.I):raise ValueError('Nginx reports an ignored duplicate server_name')
+                parser.active_target(dump,self.cfg['domain'],self.cfg['nginx_server_config'])
+                self.good('NGINX-ACTIVE','Configured TLS vhost is loaded and unambiguous')
+            except Exception:self.error('NGINX-ACTIVE','Selected vhost is inactive, duplicated or cannot be verified','Run nginx -T locally. Restore a valid backed-up configuration first; never insert a location snippet at http scope or patch every vhost.')
+
+    def endpoints(self):
+        if self.context is None:return
+        def get(url):
+            with urllib.request.urlopen(url,context=self.context,timeout=8) as response:return response.read(2097152)
+        try:
+            versions=json.loads(get(self.cfg['synapse_url'].rstrip('/')+'/_matrix/client/versions'))
+            if not isinstance(versions.get('versions'),list) or not versions['versions']:raise ValueError()
+            self.good('SYNAPSE-ENDPOINT','Actual Matrix versions endpoint reachable')
+        except Exception:self.error('SYNAPSE-ENDPOINT','Configured Synapse endpoint is not usable','Use the real host-published port, e.g. 18008 on the supplied platform, not an assumed 8008. No mock endpoints.')
+        try:
+            data=get(self.cfg['element_call_url']+'/').decode(errors='replace')
+            if '<html' not in data.lower() and '<!doctype' not in data.lower():raise ValueError()
+            call_config=json.loads(get(self.cfg['element_call_url']+'/config.json'))
+            if not isinstance(call_config.get('default_server_config'),dict):raise ValueError()
+            self.good('CALL-ENDPOINT','Call HTML and JSON configuration reachable (not an A/V test)')
+        except Exception:self.error('CALL-ENDPOINT','Element Call HTML/config is unavailable','Set element_call_url to the real loopback-published Call service; a TCP socket or mock health is insufficient.')
+        try:
+            address=urllib.parse.urlsplit('http://'+self.cfg['livekit_internal'])
+            if not address.hostname or not address.port or address.path:raise ValueError()
+            with socket.create_connection((address.hostname,address.port),timeout=5):pass
+            self.good('LIVEKIT-ENDPOINT','Configured LiveKit TCP endpoint reachable (not an ICE/E2EE test)')
+        except Exception:self.error('LIVEKIT-ENDPOINT','Configured LiveKit signaling address is unreachable','Use the actual published host port, e.g. 17880 on the supplied platform. Do not substitute a mock.')
+
     def is_own(self,info):
         labels=info['Config'].get('Labels') or {}
         expected=str(Path(self.cfg['plugin_dir'])/'compose.json')
@@ -197,7 +233,7 @@ class Preflight:
             try:self.run(['docker','run','--rm','--pull','never','--network','none','--entrypoint','python3',self.cfg['backend_image'],'-c','import sys,sqlite3,ssl;assert sys.version_info>=(3,11)']);self.good('BACKEND-DEPS','Backend Python >=3.11 and stdlib dependencies passed')
             except Exception:self.error('BACKEND-DEPS','Backend image lacks Python >=3.11/SQLite/SSL','Choose a compatible Python image, not the recorder image by assumption.')
     def run_all(self):
-        for name in ('host','paths','tls','nginx','conflicts','ports','images'):
+        for name in ('host','paths','tls','nginx','conflicts','ports','images','endpoints'):
             try:getattr(self,name)()
             except Exception as e:self.error('CHECK-'+name,'Check could not complete: '+type(e).__name__,'Correct the input or environment; no success is assumed for an incomplete check.')
         self.report()
