@@ -20,13 +20,23 @@ import urllib.error
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '3.0.0-rc1'
+VERSION = '3.0.0-rc2'
+DOCKER_BINARY = '/usr/bin/docker'
 
+
+class CommandError(RuntimeError):
+    def __init__(self,args,result):
+        self.stdout=result.stdout or ''
+        self.stderr=result.stderr or ''
+        stage=re.findall(r'RECDEPS_FAIL:([A-Za-z0-9:_-]+)',self.stdout+' '+self.stderr)
+        label=' '.join(args[:2])
+        super().__init__(label+' failed, exit='+str(result.returncode)+(('; stage='+stage[-1]) if stage else '')+'; raw output withheld to protect secrets')
 
 def run(args, timeout=120):
-    p = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout)
-    if p.returncode:
-        raise RuntimeError(args[0] + ' failed (output suppressed: may contain credentials)')
+    args=list(args)
+    if args and args[0]=='docker':args[0]=DOCKER_BINARY
+    p=subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout)
+    if p.returncode:raise CommandError(args,p)
     return p.stdout
 
 
@@ -37,7 +47,7 @@ def read_config(path):
     for key in required:
         if not cfg.get(key): raise ValueError('Missing setting: ' + key)
     defaults = dict(plugin_dir='/opt/matrix-recorder-nginx', project='matrix-recorder-nginx',
-                    backend_image='python:3.11-slim-bookworm', worker_port=8789, api_port=8765,
+                    docker_binary='/usr/bin/docker',backend_image='python:3.11-slim-bookworm', worker_port=8789, api_port=8765,
                     chromium_path='/usr/bin/chromium', ca_file='', spki_hash='', host_resolver='',
                     recording_min_power=50, recordings_min_power=50)
     cfg = dict(defaults, **cfg)
@@ -60,6 +70,7 @@ def read_config(path):
     for key in ['api_port','worker_port']:
         if type(cfg[key]) is not int or not 1024<=cfg[key]<=65535: raise ValueError('Invalid port')
     if cfg['api_port']==cfg['worker_port']: raise ValueError('Ports must differ')
+    if not Path(cfg['docker_binary']).is_absolute():raise ValueError('docker_binary must be an absolute real CLI path')
     return cfg
 
 
@@ -189,51 +200,17 @@ def compose_config(cfg, release, token):
 
 
 def check(cfg,repair,allow_create=False):
+    global DOCKER_BINARY
+    DOCKER_BINARY=cfg.get('docker_binary','/usr/bin/docker')
     verify_sources()
-    # Full non-destructive preflight. It catches the failures seen in 2.2.6:
-    # missing image dependencies, occupied ports, stale recorder containers,
-    # duplicate bot/profile usage, invalid Nginx/vhost, and existing routes.
-    from preflight import Preflight
-    Preflight(cfg, run, inspect, inject_nginx).run_all()
-
-    if not Path(cfg['element_config']).is_file():raise ValueError('element_config not found')
-    json.loads(Path(cfg['element_config']).read_text())
-    nginx=Path(cfg['nginx_server_config']);text=nginx.read_text()
-    inject_nginx(text,cfg['domain'],Path(cfg['plugin_dir'])/'nginx/recorder.conf')
-    run(['nginx','-t'])
-    if cfg['ca_file']:
-        cfg['ca_file']=str(Path(cfg['ca_file']).resolve());ssl.create_default_context(cafile=cfg['ca_file'])
-        if not cfg['spki_hash']:raise ValueError('Private CA requires explicit Chromium spki_hash (leaf SPKI SHA256).')
-    if cfg['spki_hash']:
-        import base64
-        if len(base64.b64decode(cfg['spki_hash'],validate=True))!=32:raise ValueError('SPKI must be SHA256 base64')
-    for image in (cfg['recorder_image'],cfg['backend_image']):
-        run(['docker','image','inspect',image])
-    # Verify the existing recorder image has monolith dependencies. No build/pull.
-    run(['docker','run','--rm','--network','none','--entrypoint','/bin/bash',cfg['recorder_image'],'-c',
-         'set -e; command -v node; command -v python3; command -v ffmpeg; command -v ffprobe; command -v Xvfb; command -v xdpyinfo; command -v pactl; command -v pulseaudio; test -x "$1"; node -e "if(Number(process.versions.node.split(\'.\')[0])<20)process.exit(1)"; ffmpeg -hide_banner -h full 2>&1 | grep -q -- -fps_mode; ffmpeg -hide_banner -encoders 2>&1 | grep -q libx264; ffmpeg -hide_banner -encoders 2>&1 | grep -q libmp3lame; cd /app; node --input-type=module -e "await import(\'puppeteer-core\')"','check',cfg['chromium_path']])
-    for image in (cfg['recorder_image'],cfg['backend_image']): print('OK existing image:',image)
-    live=run(['docker','ps','-q']).splitlines()
-    if live:
-        infos=json.loads(run(['docker','inspect',*live]))
-        for i in infos:
-            own=i['Config'].get('Labels',{}).get('com.docker.compose.project')==cfg['project']
-            if own:continue
-            other_env=dict(v.split('=',1) for v in i['Config'].get('Env',[]) if '=' in v)
-            other_user=other_env.get('REC_USER') or other_env.get('RECORDER_USER') or ''
-            if other_user and other_user.lstrip('@').split(':',1)[0]==cfg['bot_user'][1:].split(':',1)[0]:raise ValueError('Bot account is used by another running recorder '+i['Name'])
-            if any(Path(m.get('Source','/')).resolve()==Path(cfg['profile_dir']) for m in i.get('Mounts',[])):
-                raise ValueError('Profile used by running container '+i['Name'])
-    root=Path(cfg['plugin_dir']); saved=root/'identity.json'
-    identity={k:cfg[k] for k in ('bot_user','device_id','profile_dir')}
-    if saved.exists() and json.loads(saved.read_text())!=identity:raise ValueError('Repair cannot change bot/device/profile identity')
+    # Same implementation for standalone preflight, --check, --install and --repair.
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('recorder_preflight',ROOT/'installer/preflight.py')
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    module.Preflight(cfg,run,inject_nginx,repair=repair).run_all()
     if repair:
-        with urllib.request.urlopen('http://127.0.0.1:'+str(cfg['worker_port'])+'/health',timeout=10) as r:h=json.load(r)
-        if h.get('busy') is not False:raise ValueError('Worker busy: finish recording first')
-    else:
-        if (root/'compose.json').exists():raise ValueError('Already installed; use --repair')
-        for port in (cfg['worker_port'],cfg['api_port']):
-            with socket.socket() as s:s.bind(('127.0.0.1',port))
+        with urllib.request.urlopen('http://127.0.0.1:'+str(cfg['worker_port'])+'/health',timeout=10) as response:health=json.load(response)
+        if health.get('busy') is not False:raise ValueError('Worker busy: finish recording first')
     context=ssl.create_default_context(cafile=cfg['ca_file'] or None)
     # A temporary separate device never replaces the persistent recorder device.
     def request(path,body,token=None):
@@ -286,7 +263,7 @@ def install(cfg,repair):
     if not token_file.exists():token_file.write_text(secrets.token_urlsafe(48));token_file.chmod(0o600)
     token=token_file.read_text().strip()
     old_current=os.readlink(root/'current') if (root/'current').is_symlink() else None
-    (backup/'rollback.json').write_text(json.dumps({'old_current':old_current,'worker_port':cfg['worker_port'],'plugin_dir':cfg['plugin_dir'],'project':cfg['project']}))
+    (backup/'rollback.json').write_text(json.dumps({'old_current':old_current,'worker_port':cfg['worker_port'],'plugin_dir':cfg['plugin_dir'],'project':cfg['project'],'docker_binary':cfg.get('docker_binary','/usr/bin/docker')}))
     dc=['docker','compose','-p',cfg['project'],'-f',str(compose)]
     try:
         if cfg['ca_file']:shutil.copy2(cfg['ca_file'],root/'ca/ca.crt')

@@ -19,5 +19,6 @@
   "worker_port": 8789,
   "api_port": 8765,
   "recording_min_power": 50,
-  "recordings_min_power": 50
+  "recordings_min_power": 50,
+  "docker_binary": "/usr/bin/docker"
 }

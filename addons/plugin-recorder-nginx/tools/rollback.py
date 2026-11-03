@@ -8,7 +8,11 @@ import subprocess
 import urllib.request
 
 
+DOCKER_BINARY='/usr/bin/docker'
+
 def run(args):
+    args=list(args)
+    if args[0]=='docker':args[0]=DOCKER_BINARY
     subprocess.run(args, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
@@ -19,6 +23,8 @@ def main():
     if os.geteuid()!=0:raise SystemExit('Run as root')
     backup=Path(args.backup).resolve()
     manifest=json.loads((backup/'rollback.json').read_text())
+    global DOCKER_BINARY
+    DOCKER_BINARY=manifest.get('docker_binary','/usr/bin/docker')
     with urllib.request.urlopen('http://127.0.0.1:'+str(manifest['worker_port'])+'/health',timeout=10) as response:
         if json.load(response).get('busy') is not False:raise SystemExit('Finish recording before rollback')
     paths=json.loads((backup/'paths.json').read_text())
@@ -38,7 +44,7 @@ def main():
     if compose.exists():run(['docker','compose','-p',manifest['project'],'-f',str(compose),'up','-d','--no-build','--pull','never'])
     else:
         for service in ('backend','worker'):
-            result=subprocess.run(['docker','ps','-aq','--filter','label=com.docker.compose.project='+manifest['project'],'--filter','label=com.docker.compose.service='+service],check=True,capture_output=True,text=True)
+            result=subprocess.run([DOCKER_BINARY,'ps','-aq','--filter','label=com.docker.compose.project='+manifest['project'],'--filter','label=com.docker.compose.service='+service],check=True,capture_output=True,text=True)
             ids=result.stdout.splitlines()
             if ids:run(['docker','rm','-f',*ids])
     run(['nginx','-t']);run(['nginx','-s','reload'])

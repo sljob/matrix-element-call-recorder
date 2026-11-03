@@ -1,4 +1,4 @@
-# Matrix Element Call Recorder — Nginx plugin 3.0.0-rc1
+# Matrix Element Call Recorder — Nginx plugin 3.0.0-rc2
 
 Самостоятельный плагин для **уже работающего** Matrix / Synapse / Element Web / Element Call / LiveKit с **Nginx на хосте**. Установщик не разворачивает заново Synapse, БД, TLS и LiveKit и не преобразует Traefik в Nginx.
 
@@ -33,43 +33,39 @@ Nginx-конфигурация: один TLS `server {}` с точным `server
 
 Element config должен быть реальным файлом на хосте, из которого Element читает конфигурацию. Если образ генерирует runtime config отдельно и не читает этот файл, требуется корректно указать авторитетный host config и механизм его обновления. Автоматического поиска и редактирования временных файлов контейнера нет.
 
-Ниже обязательный безопасный preflight. Он не останавливает контейнеры, не меняет Matrix state, не удаляет профили и не редактирует Nginx/Element:
+## Установка и проверка RC2
+
+Распакуйте RC2 отдельно от RC1 и серверных hotfix-копий. Используйте существующий реальный answers-файл; не подменяйте имена и пароли примерами.
+
+Ниже обязательный preflight. Он не останавливает контейнеры, не меняет Matrix state, не удаляет профили и не редактирует Nginx/Element:
 
 ```bash
 chmod +x install.sh tools/*.sh
 ./tools/preflight.sh /root/recorder-nginx.answers.json
 ```
 
-Preflight проверяет:
+В RC2 `tools/preflight.sh`, `python3 installer/preflight.py` и `install.sh --check` выполняют **один и тот же check**. У `--install`/`--repair` та же проверка среды перед изменениями; только `--install` может дополнительно создать нового бота через явно заданный shared-secret API. Проверка входа создаёт отдельное временное устройство и делает logout только его. Сам профиль и рабочее устройство не сбрасываются.
 
-- Docker Engine и Compose v2;
-- Nginx и результат `nginx -t`;
-- JSON-конфигурацию Element Web;
-- наличие и свободность loopback-портов;
-- локальное наличие образов без `pull`;
-- внутри recorder image: Node >=20, Python3, Chromium, `puppeteer-core`, FFmpeg/ffprobe, Xvfb, `xdpyinfo`, PulseAudio, `pactl`, `libx264`, `libmp3lame`;
-- корректный вызов `docker run --entrypoint /bin/sh`: `$0=preflight`, `$1=<chromium_path>` — это предотвращает ошибку старого варианта с `/app/check`;
-- конфликтующие старые recorder-контейнеры и занятые профили;
-- дублирование аккаунта бота в работающих контейнерах;
-- оставшиеся compose-файлы монолитного/старого плагина;
-- существующие `/recording/`, `/recordings/` и module routes;
-- неоднозначный или конфликтующий TLS server block Nginx;
-- существующую identity-тройку `bot_user/device_id/profile_dir` при repair.
+Проверяются Docker daemon, Compose v2, файлы конфигурации, TLS input, Nginx, образы и runtime-зависимости, конфликтующие аккаунты в переменных и `POOL_WORKERS`, пересечение bind-профилей и занятые порты. При repair собственные контейнеры распознаются по project/service/config-file/mount, а занятой порт — дополнительно по PID через `ss` и `docker top`. Совпадения только имени проекта недостаточно. `identity.json` должен совпадать.
 
-`WARN` требует ручного решения, но не блокирует установку. `FAIL` блокирует установку. Автоматических `scale 0`, `docker stop`, `docker rm`, удаления аккаунта, сброса пароля или удаления профиля нет.
+Все Docker-вызовы установщика и rollback используют `docker_binary` (по умолчанию `/usr/bin/docker`), а не `/usr/local/bin/docker` из PATH. Старые обёртки не удаляются и не исполняются. Подключение внешних `node_modules` только через shim не считается работоспособным образом. Используйте настоящий полный image с `/app/node_modules/puppeteer-core`; npm и Docker build установщик не запускает.
 
-После успешного preflight установка выполняется отдельно:
+При `RECORDER-DEPS` показывается этап, например `command:python3`, `chromium-version`, `libx264` или `puppeteer-core`. Диагностика не выводит сырые inspect/env, токены или пароли. Отсутствующий vhost — обычный `[FAIL FILE-nginx_server_config]`, а не traceback. Nginx-файлы не создаются заглушками.
+
+`WARN` — ручная проверка; `FAIL` — остановка. Подсказки предлагают: установить недостающий пакет, импортировать настоящий образ, выбрать реальный конфиг, завершить чужой recorder или задать отдельного бота/device/profile. Автоматического stop/delete/scale/reset нет. Существование другого Matrix-бота само по себе не конфликт; блокируется использование того же MXID или профиля активным процессом.
+
+Удалённые HTTP-проверки `/recording/` не используются как доказательство отсутствия конфликтов: сайт может возвращать общий HTML для любого URL. Текущая проверка не является полным анализом всех nginx includes, systemd и сетевых путей. Она не подтверждает реальный медиапоток E2EE.
+
+Команды (из нового каталога RC2, от root):
 
 ```bash
-./install.sh --install /root/recorder-nginx.answers.json
+bash tools/preflight.sh /root/recorder-nginx.answers.json
+bash install.sh --install /root/recorder-nginx.answers.json
+# Для установки, уже успешно завершённой этим проектом:
+bash install.sh --repair /root/recorder-nginx.answers.json
 ```
 
-Для repair сначала снова выполните preflight, затем:
-
-```bash
-./install.sh --repair /root/recorder-nginx.answers.json
-```
-
+Не запускайте `install.sh answers.json` без режима: CLI требует `--check`, `--install`, `--repair` либо `--render`. `--check` не создаёт пользователя; для отсутствующего бота требуется явный `--install` и корректный shared secret либо предварительное создание средствами Synapse.
 
 Основные параметры:
 
@@ -122,7 +118,7 @@ chmod +x install.sh tools/*.sh
 ## Проверки и границы результата
 
 ```bash
-bash tools/verify.sh
+sudo bash tools/verify.sh
 python3 -m unittest discover -s tests -v
 ```
 

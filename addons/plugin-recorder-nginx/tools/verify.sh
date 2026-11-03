@@ -10,7 +10,7 @@ for name,expected in manifest['files'].items():
 for p in root.rglob('*.py'):ast.parse(p.read_text(),filename=str(p))
 for p in [root/'runtime/worker.mjs',root/'ui/index.js',root/'vendor/monolith/p63-observer.js']:
     subprocess.run(['node','--check',str(p)],check=True)
-for p in [root/'install.sh',root/'runtime/entrypoint.sh']:
+for p in [root/'install.sh',root/'runtime/entrypoint.sh',root/'tools/preflight.sh']:
     subprocess.run(['bash','-n',str(p)],check=True)
 print('OK provenance, Python/JS/Bash syntax')
 PY
