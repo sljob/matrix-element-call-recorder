@@ -475,7 +475,7 @@ class RecorderModule {
       // Diagnostics handle for the browser console; never used by the code itself.
       try {
         window.__pluginRecorder = Object.freeze({
-          version: "3.0.0-rc3",
+          version: "3.0.0-rc4",
           origin: window.location.origin,
           apiBase: this.cfg.apiBase,
           stores: this.stores,

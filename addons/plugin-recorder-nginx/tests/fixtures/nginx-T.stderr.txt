@@ -1,0 +1,3 @@
+2026/11/05 20:50:22 [warn] 1222002#1222002: the "listen ... http2" directive is deprecated, use the "http2" directive instead in /etc/nginx/sites-enabled/matrix.example.org.conf:8
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful

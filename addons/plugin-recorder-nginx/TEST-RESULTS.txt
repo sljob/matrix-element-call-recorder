@@ -36,13 +36,20 @@ test_inactive_and_duplicate_vhost_rejected (test_rc3.StructuralTests.test_inacti
 test_inline_comments_quotes_variables_nested_scopes (test_rc3.StructuralTests.test_inline_comments_quotes_variables_nested_scopes) ... ok
 test_malformed_and_duplicate_rejected (test_rc3.StructuralTests.test_malformed_and_duplicate_rejected) ... ok
 test_release_world_traversable_under_real_umask (test_rc3.StructuralTests.test_release_world_traversable_under_real_umask) ... ok
-test_failed_reload_rolls_back_existing_configuration (test_transaction.TransactionTests.test_failed_reload_rolls_back_existing_configuration) ... Nginx rollback check failed; backup: /tmp/tmp0hehbpfn/plugin/backups/20261103-114359-552675
+test_command_failure_not_converted_to_empty_success (test_rc4.NginxStreamTests.test_command_failure_not_converted_to_empty_success) ... ok
+test_deprecation_warning_does_not_block_valid_vhost (test_rc4.NginxStreamTests.test_deprecation_warning_does_not_block_valid_vhost) ... ok
+test_duplicate_warning_is_still_fatal_from_stderr (test_rc4.NginxStreamTests.test_duplicate_warning_is_still_fatal_from_stderr) ... ok
+test_no_warning_needed_rc3_also_failed_on_success_notice (test_rc4.NginxStreamTests.test_no_warning_needed_rc3_also_failed_on_success_notice) ... ok
+test_real_cli_separate_streams (test_rc4.NginxStreamTests.test_real_cli_separate_streams) ... ok
+test_reproduces_rc3_failure_on_captured_dump (test_rc4.NginxStreamTests.test_reproduces_rc3_failure_on_captured_dump) ... ok
+test_runner_keeps_success_diagnostics_separate (test_rc4.NginxStreamTests.test_runner_keeps_success_diagnostics_separate) ... ok
+test_failed_reload_rolls_back_existing_configuration (test_transaction.TransactionTests.test_failed_reload_rolls_back_existing_configuration) ... Nginx rollback check failed; backup: /tmp/tmpqa6crxxa/plugin/backups/20261105-153853-064679
 ok
 test_install_repair_preserves_identity_and_profile (test_transaction.TransactionTests.test_install_repair_preserves_identity_and_profile) ... ok
 test_actual_node_worker_start_stop_publish_restart (test_worker.WorkerLifecycleTests.test_actual_node_worker_start_stop_publish_restart) ... ok
 
 ----------------------------------------------------------------------
-Ran 40 tests in 7.033s
+Ran 47 tests in 6.996s
 
 OK
 [ OK ] HOST-python3 python3 available
@@ -70,13 +77,13 @@ OK
         Do not reuse a device ID with a different existing crypto database.
 OK bot login (temporary device logged out); permanent device unchanged
 OK configuration, source checksums, Nginx syntax, dependencies, identity and ports
-Installed 3.0.0-rc3 backup: /tmp/tmpns2_2fe_/plugin/backups/20261103-114359-548967
+Installed 3.0.0-rc4 backup: /tmp/tmpnky3z3hd/plugin/backups/20261105-153853-031074
 Matrix bot login verified in preflight; no power levels modified.
 Reload Element. End-to-end camera/audio recording must be checked before production acceptance.
-Installed 3.0.0-rc3 backup: /tmp/tmpk8ebfgoh/plugin/backups/20261103-114359-557373
+Installed 3.0.0-rc4 backup: /tmp/tmp0pmsvdep/plugin/backups/20261105-153853-068729
 Matrix bot login verified in preflight; no power levels modified.
 Reload Element. End-to-end camera/audio recording must be checked before production acceptance.
-Installed 3.0.0-rc3 backup: /tmp/tmpk8ebfgoh/plugin/backups/20261103-114359-559674
+Installed 3.0.0-rc4 backup: /tmp/tmp0pmsvdep/plugin/backups/20261105-153853-070969
 Matrix bot login verified in preflight; no power levels modified.
 Reload Element. End-to-end camera/audio recording must be checked before production acceptance.
 [plugin-recorder-nginx-v3] loaded {

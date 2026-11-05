@@ -134,10 +134,25 @@ class Preflight:
                 spec=importlib.util.spec_from_file_location('preflight_nginx_parser',Path(__file__).with_name('nginx_config.py'))
                 parser=importlib.util.module_from_spec(spec);spec.loader.exec_module(parser)
                 dump=self.run(['nginx','-T'])
-                if re.search(r'conflicting server name',dump,re.I):raise ValueError('Nginx reports an ignored duplicate server_name')
+                diagnostics=getattr(dump,'stderr','')
+                if re.search(r'conflicting server name',diagnostics,re.I):
+                    raise ValueError('Nginx reports an ignored duplicate server_name')
+                # stdout is the dump; stderr contains success notices and warnings.
+                # Never append diagnostics to a server block, even on exit code 0.
+                if re.search(r'\[warn\]',diagnostics,re.I):
+                    self.warn('NGINX-WARNING','Nginx emitted a non-fatal warning','Run nginx -t locally to review it. Deprecation of listen ... http2 is not an inactive vhost.')
                 parser.active_target(dump,self.cfg['domain'],self.cfg['nginx_server_config'])
                 self.good('NGINX-ACTIVE','Configured TLS vhost is loaded and unambiguous')
-            except Exception:self.error('NGINX-ACTIVE','Selected vhost is inactive, duplicated or cannot be verified','Run nginx -T locally. Restore a valid backed-up configuration first; never insert a location snippet at http scope or patch every vhost.')
+            except Exception as error:
+                # Known structural errors are safe, actionable and do not contain config bodies.
+                reasons={
+                    'Configured vhost is not loaded by nginx -T; select the enabled authoritative file':'Selected file is not loaded by Nginx',
+                    'Duplicate or ambiguous active TLS server_name; resolve conflicting enabled sites before installing':'Duplicate or ambiguous active TLS vhost',
+                    'Nginx reports an ignored duplicate server_name':'Nginx reports an ignored duplicate server_name',
+                    'Incomplete Nginx configuration':'Nginx dump parsing failed; configuration text was incomplete',
+                }
+                reason=reasons.get(str(error),'Cannot verify Nginx dump ('+type(error).__name__+')')
+                self.error('NGINX-ACTIVE',reason,'Run nginx -T locally. Do not delete vhosts or alter DNS merely to bypass this check. No files changed.')
 
     def endpoints(self):
         if self.context is None:return

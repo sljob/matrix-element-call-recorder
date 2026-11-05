@@ -1,5 +1,6 @@
-Version: 3.0.0-rc3
+Version: 3.0.0-rc4
 Status: corrected release candidate
-Base: attached RC2 archive b2da3d4088033662b4fdcc60bfb23e839d9848fd0f703f819a7e1f693e700b4b
-Tests: 40 Python + Node UI, no root-suite skips
-Real Matrix E2EE A/V acceptance: NOT performed
+Base: supplied RC3 source
+Fix: nginx -T diagnostics are kept separate from configuration text
+Tests: 47 Python + Node UI passed
+Actual server installation and E2EE media acceptance: not performed

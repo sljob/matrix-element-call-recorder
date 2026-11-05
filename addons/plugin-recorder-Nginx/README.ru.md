@@ -1,4 +1,6 @@
-# Matrix Element Call Recorder — Nginx plugin 3.0.0-rc3
+> RC4: сначала START-HERE.ru.md и CHANGELOG-RC4.ru.md. Исправлено смешивание stdout/stderr nginx -T; прежние серверные fix-скрипты не использовать.
+
+# Matrix Element Call Recorder — Nginx plugin 3.0.0-rc4
 
 Самостоятельный плагин для **уже работающего** Matrix / Synapse / Element Web / Element Call / LiveKit с **Nginx на хосте**. Установщик не разворачивает заново Synapse, БД, TLS и LiveKit и не преобразует Traefik в Nginx.
 

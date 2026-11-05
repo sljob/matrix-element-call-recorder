@@ -1,8 +1,8 @@
-# RC3 validation
+# RC4 validation
 
-40 Python tests passed with root privileges, no skips; Node UI contract test passed.
-Real Nginx process: HTTPS GET exact ui/index.js bytes and Element config, non-root worker file access.
-Regression: umask 077 release permissions, comments/quotes/variables/nested Nginx blocks, inactive and duplicate vhosts, incorrect endpoints/mock health, deployment rollback.
-Real FFmpeg fragmented MP4 publication and Node worker lifecycle tests passed. Matrix authorization uses test doubles; CLI preflight fixture uses explicit fake tools.
-Docker Compose config schema validated; actual Docker containers and real Matrix E2EE call NOT executed.
-This is a corrected release candidate, NOT production or real-camera certification. Read START-HERE.ru.md.
+47 Python tests passed with root privileges; Node UI test passed.
+Seven new regressions cover nginx -T stdout/stderr separation, success notices, deprecation and duplicate diagnostics, and command failures.
+Actual Nginx HTTPS module delivery, umask 077 permissions, rollback, FFmpeg publication and Node lifecycle remain tested.
+Matrix authorization and positive CLI tests use explicit test doubles.
+Actual Docker service deployment and real Matrix E2EE A/V capture were NOT performed.
+This source release fixes reproduced installer defects; it does not supply the missing recorder Docker image.

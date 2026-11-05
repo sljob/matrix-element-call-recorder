@@ -20,7 +20,7 @@ import urllib.error
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '3.0.0-rc3'
+VERSION = '3.0.0-rc4'
 DOCKER_BINARY = '/usr/bin/docker'
 
 
@@ -32,12 +32,19 @@ class CommandError(RuntimeError):
         label=' '.join(args[:2])
         super().__init__(label+' failed, exit='+str(result.returncode)+(('; stage='+stage[-1]) if stage else '')+'; raw output withheld to protect secrets')
 
+class CommandOutput(str):
+    """Text is stdout only; diagnostics must never become Nginx directives."""
+    def __new__(cls, stdout, stderr=''):
+        result=super().__new__(cls,stdout)
+        result.stderr=stderr
+        return result
+
 def run(args, timeout=120):
     args=list(args)
     if args and args[0]=='docker':args[0]=DOCKER_BINARY
     p=subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout)
     if p.returncode:raise CommandError(args,p)
-    return p.stdout + (p.stderr if args[:2]==['nginx','-T'] else '')
+    return CommandOutput(p.stdout, p.stderr)
 
 
 def read_config(path):
