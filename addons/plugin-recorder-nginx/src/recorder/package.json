@@ -1,0 +1,16 @@
+{
+  "name": "recorder-plugin-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HTTP shim around the pinned MatrixRTC observer",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "puppeteer-core": "^23.11.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

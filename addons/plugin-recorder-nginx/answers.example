@@ -1,0 +1,85 @@
+# ===========================================================================
+#  Matrix Element Call Recorder — nginx edition
+#  answers file. Copy to /root/answers.env, chmod 600, edit, then:
+#      bash install.sh --check /root/answers.env
+#      bash install.sh --install /root/answers.env
+#
+#  Only DOMAIN usually needs editing. Everything else is auto-detected.
+# ===========================================================================
+
+# -- action ----------------------------------------------------------------
+# check | install | repair | verify | doctor | uninstall
+INSTALL_ACTION="check"
+INSTALLER_LANG="ru"
+FORCE_INSTALL="false"
+
+# -- your deployment -------------------------------------------------------
+# Leave "auto" to read it from the Element Web container config.
+DOMAIN="auto"
+
+# How the plugin is exposed. "standalone" runs its own nginx container on
+# 127.0.0.1:18085 and touches nobody else's config — this is the default and
+# the only mode that is safe to run blindly.
+# "external" adds an include to an nginx you already run (container or host).
+NGINX_MODE="standalone"
+STANDALONE_PORT="18085"
+
+# -- discovery (leave "auto" unless detection picks the wrong container) ---
+ELEMENT_WEB_CONTAINER="auto"
+ELEMENT_CALL_CONTAINER="auto"
+SYNAPSE_CONTAINER="auto"
+NGINX_CONTAINER="auto"
+DOCKER_ADDONS_NETWORK="auto"
+ELEMENT_CALL_URL="auto"
+SYNAPSE_INTERNAL_URL="auto"
+
+# -- paths ----------------------------------------------------------------
+BASE_DIR="auto"
+PLUGIN_DIR="auto"
+RECORDINGS_DIR="auto"
+RECORDER_BOT_PROFILE_DIR="auto"
+
+# -- permissions ----------------------------------------------------------
+# A caller must have at least this power level in the room to start or stop.
+RECORDING_MIN_POWER_LEVEL="50"
+RECORDINGS_MIN_POWER_LEVEL="50"
+
+# -- recorder bot(s) ------------------------------------------------------
+# One bot account per worker. The account must exist in Synapse already.
+RECORDER_BOT_COUNT="1"
+RECORDER_BOT_USERS="spk"
+RECORDER_BOT_PASSWORDS=""
+RECORDER_BOT_DISPLAYNAME="Call Recorder"
+
+# -- ports ----------------------------------------------------------------
+RECORDER_HOST_PORT="8788"
+CONTROLLER_PORT="8765"
+REC_HTTP_PORT="8899"
+# Bind controller and portal to 127.0.0.1 only. Set to "false" when nginx
+# reaches them over a docker network and you do not want host ports at all.
+PUBLISH_LOOPBACK_PORTS="true"
+
+# -- capture --------------------------------------------------------------
+RECORD_RESOLUTION="1280x720"
+RECORD_FRAMERATE="25"
+RECORD_VIDEO_BITRATE="2500k"
+RECORD_AUDIO_BITRATE="128k"
+
+# -- UI -------------------------------------------------------------------
+BUTTON_LANG="ru"
+BUTTON_ALWAYS_VISIBLE="true"
+BUTTON_SHOW_RECORDINGS_LINK="true"
+RECORDING_API_PREFIX="/recording"
+RECORDINGS_PUBLIC_PATH="/recordings/"
+BUTTON_POLL_INTERVAL_MS="5000"
+UI_INTEGRATION_MODE="module"
+
+# -- TLS ------------------------------------------------------------------
+# "auto" looks for a CA certificate near /matrix or /opt/element-stack.
+CUSTOM_CA_CERT="auto"
+TLS_CA_FILE="auto"
+CHROMIUM_SPKI_HASH="auto"
+
+# -- safety ---------------------------------------------------------------
+BACKUP_ELEMENT_WEB="true"
+PRESERVE_DATA_ON_UNINSTALL="true"

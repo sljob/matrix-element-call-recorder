@@ -1,0 +1,34 @@
+{
+  "ui": {
+    "record": "Record",
+    "stop": "Stop",
+    "recordings": "Recordings",
+    "starting": "Starting…",
+    "stopping": "Finishing…",
+    "processing": "Processing…",
+    "needCall": "Recording is available only during a call",
+    "started": "Recording started",
+    "stopped": "Recording stopped, the file is being processed",
+    "failed": "Could not start recording",
+    "busy": "All recorders are busy, try again later",
+    "needPower": "Not enough power to record in this room",
+    "noToken": "No active Matrix session — sign in again",
+    "unreachable": "Recording service unreachable",
+    "noRoom": "Could not determine the room"
+  },
+  "portal": {
+    "title": "Conference recordings",
+    "empty": "No recordings yet.",
+    "denied": "Access denied. Sign in with the same Matrix account as Element.",
+    "login": "Sign in via Element",
+    "back": "Back to list",
+    "download": "Download"
+  },
+  "installer": {
+    "plan_title": "Install plan",
+    "will_create": "Will create",
+    "will_not_touch": "Will not touch",
+    "done": "Done.",
+    "check_done": "Check finished — nothing was changed on this host"
+  }
+}
