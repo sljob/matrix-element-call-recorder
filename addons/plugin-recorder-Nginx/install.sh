@@ -1,189 +1,184 @@
-#!/bin/bash
-# ==========================================================================
-#  Matrix Element Call Recorder Plugin v2.2.0 (nginx) — Launcher
+#!/usr/bin/env bash
+# ===========================================================================
+#  Matrix Element Call Recorder — Nginx edition installer v3.1.0
 #
-#  Thin wrapper: validates host prerequisites, parses CLI flags or reads
-#  INSTALL_ACTION from the answers file, enforces safe file permissions on
-#  answers, and hands execution over to installer/install.py.
+#  Thin, loud launcher. All decisions live in installer/*.py; this file only
+#  parses arguments, sanity-checks the environment, and turns any crash into a
+#  readable report instead of "trap ERR at line N".
 #
 #  Modes:
-#    --check      Verify server readiness & missing components (read-only)
-#    --install    Install or upgrade the plugin (Module API + backend)
-#    --repair     Re-apply mounts, nginx snippet & Element module registration
-#    --uninstall  Cleanly remove plugin (preserves recordings & profile-spk)
-# ==========================================================================
+#    --check      read-only: discovery, conflict report, installation plan
+#    --install    install or upgrade the plugin
+#    --repair     re-apply nginx routes, mounts and Element registration
+#    --verify     end-to-end probe of every hop the record button uses
+#    --doctor     deep diagnostics, no changes
+#    --uninstall  remove containers, routes and UI module (keeps recordings)
+# ===========================================================================
 set -Eeuo pipefail
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+readonly HERE
+
+R=$'\033[0m'; B=$'\033[1m'; C=$'\033[36m'; Y=$'\033[33m'; E=$'\033[31m'; G=$'\033[32m'
+readonly R B C Y E G
+
 PHASE=""
 ANSWERS=""
-EXTRA_ARGS=()
+ASSUME_YES=0
 
-R=$'\033[0m'; B=$'\033[1m'; C=$'\033[36m'; Y=$'\033[33m'; E=$'\033[31m'
+# --------------------------------------------------------------------------
+# error reporting: command, exit code, line, and what to do about it
+# --------------------------------------------------------------------------
+LAST_CMD=""
+trap 'LAST_CMD=$BASH_COMMAND' DEBUG
+
+on_error() {
+    local code=$1 line=$2 cmd=${3:-$LAST_CMD}
+    printf '\n%sXX установка остановлена%s\n' "$E" "$R" >&2
+    printf '   код возврата : %s\n' "$code" >&2
+    printf '   строка       : %s\n' "$line" >&2
+    printf '   команда      : %s\n' "$cmd" >&2
+    printf '   скрипт       : %s\n' "${BASH_SOURCE[0]}" >&2
+    printf '   каталог      : %s\n' "$PWD" >&2
+    printf '\n  Ничего не удалено. Исправь причину и повтори ту же команду.\n' >&2
+    printf '  Если непонятно — сними диагностику: bash install.sh --doctor %s\n\n' \
+        "${ANSWERS:-<answers>}" >&2
+    exit "$code"
+}
+trap 'on_error $? $LINENO "$BASH_COMMAND"' ERR
 
 usage() {
     cat <<'EOF'
-Usage:
-  bash install.sh [--check|--install|--repair|--uninstall] [--answers] <answers.env>
+Использование:
+  bash install.sh <режим> <answers-файл>
 
-Modes (CLI flag overrides INSTALL_ACTION in the answers file):
-  --check        Read-only discovery, component verification & installation plan.
-  --install      Install/upgrade overlay services, nginx snippet & Element ESM module.
-  --repair       Re-apply Element Web module (/modules/recorder), config & routes
-                 (alias: --reapply-ui).
-  --uninstall    Remove plugin containers, routes & Element module (keeps recordings
-                 and bot E2EE session profile-spk).
+Режимы:
+  --check        Только проверка: окружение, конфликты, план установки.
+                 Ничего не меняет. Код возврата 2 — есть блокеры.
+  --install      Установка или обновление плагина.
+  --repair       Переприменить маршруты nginx, монтирования и UI-модуль.
+  --verify       Сквозная проверка всех звеньев цепочки кнопки записи.
+  --doctor       Глубокая диагностика без изменений.
+  --uninstall    Удалить контейнеры, маршруты и UI-модуль.
+                 Записи и E2EE-профиль бота сохраняются.
 
-Options:
-  -a, --answers <file>   Path to the answers file (default: ./answers.env if present)
-  -y, --yes              Non-interactive mode (auto-accept prompts where safe)
-  -h, --help             Show this help message
+Опции:
+  -a, --answers <файл>   Путь к answers (иначе ./answers.env)
+  -y, --yes              Неинтерактивный режим
+  -h, --help             Эта справка
 
-Examples:
+Примеры:
   cp answers.example /root/answers.env && chmod 600 /root/answers.env
-  bash install.sh --check     /root/answers.env
-  bash install.sh --install   /root/answers.env
-  bash install.sh --repair    /root/answers.env
-  bash install.sh --uninstall /root/answers.env
-  bash install.sh --answers   /root/answers.env   # uses INSTALL_ACTION from file
+  bash install.sh --check   /root/answers.env
+  bash install.sh --install /root/answers.env
 EOF
 }
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --check|--install|--repair|--uninstall)
-            PHASE="${1#--}"
-            shift
-            ;;
-        --reapply-ui)
-            PHASE="repair"
-            shift
-            ;;
+        --check|--install|--repair|--verify|--doctor|--uninstall)
+            PHASE="${1#--}"; shift ;;
         -a|--answers)
-            if [ $# -lt 2 ]; then
-                printf '%smissing file path after %s%s\n\n' "$E" "$1" "$R" >&2
-                usage
-                exit 2
-            fi
-            ANSWERS="$2"
-            shift 2
-            ;;
-        --answers=*)
-            ANSWERS="${1#*=}"
-            shift
-            ;;
-        -y|--yes)
-            EXTRA_ARGS+=("--yes")
-            shift
-            ;;
-        -h|--help)
-            usage
-            exit 0
-            ;;
-        --*)
-            printf '%sunknown option: %s%s\n\n' "$E" "$1" "$R" >&2
-            usage
-            exit 2
-            ;;
+            [ $# -ge 2 ] || { printf '%sпосле %s нужен путь к файлу%s\n\n' "$E" "$1" "$R" >&2; usage; exit 2; }
+            ANSWERS="$2"; shift 2 ;;
+        --answers=*) ANSWERS="${1#*=}"; shift ;;
+        -y|--yes) ASSUME_YES=1; shift ;;
+        -h|--help) usage; exit 0 ;;
+        --*) printf '%sнеизвестная опция: %s%s\n\n' "$E" "$1" "$R" >&2; usage; exit 2 ;;
         *)
-            if [ -z "$ANSWERS" ]; then
-                ANSWERS="$1"
-            else
-                printf '%sunexpected argument: %s%s\n\n' "$E" "$1" "$R" >&2
-                usage
-                exit 2
+            if [ -z "$ANSWERS" ]; then ANSWERS="$1"
+            else printf '%sлишний аргумент: %s%s\n\n' "$E" "$1" "$R" >&2; usage; exit 2
             fi
-            shift
-            ;;
+            shift ;;
     esac
 done
 
-# Default answers file location if omitted on CLI
-if [ -z "$ANSWERS" ] && [ -f "$HERE/answers.env" ]; then
-    ANSWERS="$HERE/answers.env"
-fi
-
-if [ -z "$ANSWERS" ]; then
-    printf '%sanswers file not given%s\n\n' "$E" "$R" >&2
-    usage
-    exit 2
-fi
-
-if [ ! -f "$ANSWERS" ]; then
-    printf '%sanswers file not found: %s%s\n' "$E" "$ANSWERS" "$R" >&2
-    exit 1
-fi
-
-# Read a key=value from the answers file without sourcing arbitrary shell code
-read_answer_key() {
+# Mode may also come from the answers file (INSTALL_ACTION=...).
+read_answer() {
     local key="$1" file="$2"
+    [ -f "$file" ] || return 0
     awk -F= -v k="$key" '
         /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
         {
-            kname = $1
-            gsub(/^[[:space:]]+|[[:space:]]+$/, "", kname)
-            if (kname == k) {
-                val = substr($0, index($0, "=") + 1)
-                gsub(/^[[:space:]]+|[[:space:]]+$/, "", val)
-                gsub(/^["'\'']|["'\'']$/, "", val)
-                print val
+            name=$1; gsub(/^[[:space:]]+|[[:space:]]+$/, "", name)
+            if (name == k) {
+                v = substr($0, index($0,"=")+1)
+                gsub(/^[[:space:]]+|[[:space:]]+$/, "", v); gsub(/^["'"'"']|["'"'"']$/, "", v)
+                print v
             }
-        }
-    ' "$file" | tail -n 1
+        }' "$file" | tail -n 1
 }
 
-# Resolve mode from INSTALL_ACTION (or legacy PHASE) in answers file when not passed on CLI
+if [ -z "$ANSWERS" ] && [ -f "$HERE/answers.env" ]; then ANSWERS="$HERE/answers.env"; fi
+if [ -z "$ANSWERS" ]; then
+    printf '%sне указан answers-файл%s\n\n' "$E" "$R" >&2; usage; exit 2
+fi
+if [ ! -f "$ANSWERS" ]; then
+    printf '%sanswers не найден: %s%s\n' "$E" "$ANSWERS" "$R" >&2
+    printf '  cp answers.example /root/answers.env && chmod 600 /root/answers.env\n' >&2
+    exit 1
+fi
+ANSWERS="$(cd -- "$(dirname -- "$ANSWERS")" && pwd)/$(basename -- "$ANSWERS")"
+
 if [ -z "$PHASE" ]; then
-    PHASE="$(read_answer_key "INSTALL_ACTION" "$ANSWERS")"
-    if [ -z "$PHASE" ]; then
-        PHASE="$(read_answer_key "PHASE" "$ANSWERS")"
-    fi
+    PHASE="$(read_answer INSTALL_ACTION "$ANSWERS")"
     PHASE="${PHASE:-check}"
 fi
-
 case "$PHASE" in
-    check|install|repair|uninstall) ;;
+    check|install|repair|verify|doctor|uninstall) ;;
     reapply-ui) PHASE="repair" ;;
-    *)
-        printf '%sunknown mode: %s (expected: check | install | repair | uninstall)%s\n\n' \
-            "$E" "$PHASE" "$R" >&2
-        usage
-        exit 2
-        ;;
+    *) printf '%sнеизвестный режим: %s%s\n\n' "$E" "$PHASE" "$R" >&2; usage; exit 2 ;;
 esac
 
-# A world-readable answers file leaks recorder bot passwords and Synapse secrets.
-# Refuse on 644/755; auto-tighten or instruct operator.
-perms="$(stat -c '%a' "$ANSWERS" 2>/dev/null || stat -f '%Lp' "$ANSWERS" 2>/dev/null || echo "")"
-case "$perms" in
-    600|400|"") ;;
-    *)
-        printf '%sanswers file %s has insecure mode %s — run: chmod 600 %s%s\n' \
-            "$E" "$ANSWERS" "$perms" "$ANSWERS" "$R" >&2
-        exit 1
-        ;;
-esac
+# The answers file holds bot passwords: never let it be world-readable.
+if perms="$(stat -c '%a' "$ANSWERS" 2>/dev/null)"; then
+    case "$perms" in
+        600|400) ;;
+        *) printf '%sanswers %s имеет режим %s — выполни: chmod 600 %s%s\n' \
+               "$E" "$ANSWERS" "$perms" "$ANSWERS" "$R" >&2; exit 1 ;;
+    esac
+fi
 
 if [ "$(id -u)" -ne 0 ]; then
-    printf '%srun as root%s (docker socket and Element Web module mounts require root)\n' \
+    printf '%sзапускай от root%s (нужны docker socket и запись в конфиги Element Web)\n' \
         "$E" "$R" >&2
     exit 1
 fi
 
 if ! command -v python3 >/dev/null 2>&1; then
-    printf '%spython3 is required on the host (apt-get install -y python3)%s\n' "$E" "$R" >&2
+    printf '%spython3 обязателен: apt-get install -y python3%s\n' "$E" "$R" >&2
     exit 1
 fi
-
 if ! python3 -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 8) else 1)'; then
-    printf '%spython 3.8+ required, found: %s%s\n' "$E" "$(python3 -V 2>&1)" "$R" >&2
+    printf '%sнужен python 3.8+, найден: %s%s\n' "$E" "$(python3 -V 2>&1)" "$R" >&2
     exit 1
 fi
 
-printf '%sMatrix Element Call Recorder Plugin v2.0%s — mode %s%s%s, answers %s\n\n' \
-    "$B" "$R" "$C" "$PHASE" "$R" "$ANSWERS"
+printf '%sMatrix Element Call Recorder — nginx plugin v3.1.0%s\n' "$B" "$R"
+printf '  режим  : %s%s%s\n  answers: %s\n\n' "$C" "$PHASE" "$R" "$ANSWERS"
 
-exec python3 "$HERE/installer/install.py" \
-    --phase "$PHASE" \
-    --answers "$ANSWERS" \
-    "${EXTRA_ARGS[@]}"
+ARGS=(--phase "$PHASE" --answers "$ANSWERS")
+[ "$ASSUME_YES" -eq 1 ] && ARGS+=(--yes)
+
+# Not `exec`: if Python dies with a traceback we still want to print the
+# context and the doctor hint below, instead of leaving a bare stack trace.
+# `|| rc=$?` keeps the ERR trap out of the loop: install.py already prints its
+# own diagnosis, and a duplicated report reads like two different failures.
+rc=0
+python3 "$HERE/installer/install.py" "${ARGS[@]}" || rc=$?
+
+case "$rc" in
+    0) exit 0 ;;
+    2)  # --check found blockers; the report above is the whole message
+        exit 2 ;;
+    3)  # install refused by preflight, or doctor found blockers
+        exit 3 ;;
+    *)
+        printf '\n%sXX режим %s завершился с кодом %s%s\n' "$E" "$PHASE" "$rc" "$R" >&2
+        printf '  answers  : %s\n' "$ANSWERS" >&2
+        printf '  каталог  : %s\n' "$HERE" >&2
+        printf '  python   : %s\n' "$(python3 -V 2>&1)" >&2
+        printf '\n  Что делать: посмотри сообщение выше. Если это трассировка Python —\n' >&2
+        printf '  пришли её вместе с выводом: bash install.sh --doctor %s\n\n' "$ANSWERS" >&2
+        exit "$rc" ;;
+esac

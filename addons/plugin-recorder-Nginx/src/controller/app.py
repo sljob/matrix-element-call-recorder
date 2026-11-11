@@ -27,8 +27,31 @@ import time
 import requests
 from flask import Flask, jsonify, request
 
+PLUGIN_VERSION = os.environ.get("PLUGIN_VERSION", "3.1.0")
 PORT = int(os.environ.get("PORT", "8765"))
-RECORDER_URLS = [u.strip() for u in os.environ.get("RECORDER_URLS", "").split(",") if u.strip()]
+
+
+def _worker_urls():
+    """RECORDER_URLS (comma list) wins; RECORDER_URL is the single-worker form.
+
+    Both are read lazily and never raise: a missing worker URL must degrade the
+    report, not crash the process (a crashed controller is a 502 for the whole
+    button, which is exactly the failure mode this plugin exists to avoid).
+    """
+    raw = []
+    for key in ("RECORDER_URLS", "RECORDER_URL"):
+        value = os.environ.get(key, "") or ""
+        raw.extend(part.strip() for part in value.split(",") if part.strip())
+    seen, urls = set(), []
+    for url in raw:
+        url = url.rstrip("/")
+        if url and url not in seen:
+            seen.add(url)
+            urls.append(url)
+    return urls
+
+
+RECORDER_URLS = _worker_urls()
 TOKEN = os.environ.get("RECORDER_TOKEN", "")
 ACCOUNTS = [a.strip() for a in os.environ.get("RECORDER_ACCOUNTS", "").split(",") if a.strip()]
 MIN_POWER = int(os.environ.get("RECORDING_MIN_POWER_LEVEL", "50"))
@@ -269,22 +292,48 @@ def _reconcile():
 # --------------------------------------------------------------------------
 
 @app.get("/health")
+@app.get("/api/health")
 def health():
-    workers = []
+    """Liveness for the proxy plus a truthful picture of the workers.
+
+    Always 200 while the process is up, even when every worker is down: the
+    button and the installer distinguish "controller missing" (502/504) from
+    "controller up, recorder not" (200 + worker_unavailable=true).
+    """
+    workers, reasons = [], []
     for url in RECORDER_URLS:
         h = worker_health(url)
+        if not h:
+            reasons.append("worker %s: no answer on /health" % url)
         workers.append({"url": url, "ok": bool(h),
                         "busy": (h or {}).get("busy"),
                         "profile": (h or {}).get("profile", {}).get("exists")})
+    if not RECORDER_URLS:
+        reasons.append("RECORDER_URLS/RECORDER_URL is empty; start/stop will fail")
+    elif not any(w["ok"] for w in workers):
+        reasons.append("no worker reachable from the controller network")
     return jsonify({
         "ok": True,
+        "service": "rec-controller",
+        "version": PLUGIN_VERSION,
         "mode": "adopt" if ADOPT else "overlay",
         "domain": DOMAIN,
         "lang": LANG,
         "min_power_level": MIN_POWER,
+        "worker_unavailable": not any(w["ok"] for w in workers),
         "workers": workers,
+        "diagnostics": reasons,
         "active_jobs": sum(1 for j in _jobs.values() if j.get("state") == "recording"),
+        "synapse_configured": bool(SYNAPSE_URL),
     })
+
+
+@app.get("/api/version")
+def version():
+    return jsonify({"service": "rec-controller", "version": PLUGIN_VERSION,
+                    "api": ["/api/health", "/api/version",
+                            "/api/record/start", "/api/record/stop",
+                            "/api/record/status"]})
 
 
 @app.get("/api/record/status")

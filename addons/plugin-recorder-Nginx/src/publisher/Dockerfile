@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY publish.py .
 
-ARG PLUGIN_VERSION=0.1.0
+ARG PLUGIN_VERSION=3.1.0
 ENV PLUGIN_VERSION=${PLUGIN_VERSION}
 
 # No HTTP surface: this container only writes files, so no EXPOSE and no

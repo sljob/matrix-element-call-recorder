@@ -11,7 +11,7 @@ RUN pip install -r requirements.txt
 
 COPY index.py .
 
-ARG PLUGIN_VERSION=0.1.0
+ARG PLUGIN_VERSION=3.1.0
 ENV PLUGIN_VERSION=${PLUGIN_VERSION}
 
 EXPOSE 8899

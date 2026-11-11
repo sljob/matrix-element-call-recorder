@@ -12,7 +12,7 @@ COPY app.py .
 
 # Reported by /health; the installer compares it with its own version so a
 # stale image is visible instead of silently running old code.
-ARG PLUGIN_VERSION=0.1.0
+ARG PLUGIN_VERSION=3.1.0
 ENV PLUGIN_VERSION=${PLUGIN_VERSION}
 
 RUN mkdir -p /output /public
